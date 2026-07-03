@@ -1,0 +1,35 @@
+{
+  "name": "easyspec-prompts",
+  "version": "0.1.0",
+  "description": "Shareable change-* prompts and custom agent definitions with an init CLI for mainstream IDEs.",
+  "type": "module",
+  "bin": {
+    "easyspec-init": "bin/easyspec-init.js",
+    "easyspec": "bin/easyspec-init.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "templates",
+    "README.md"
+  ],
+  "scripts": {
+    "start": "node bin/easyspec-init.js",
+    "init:project": "node bin/easyspec-init.js init --scope project --agent copilot",
+    "init:global": "node bin/easyspec-init.js init --scope global --agent copilot",
+    "sync": "node bin/easyspec-init.js sync --template-profile copilot",
+    "check": "node bin/easyspec-init.js --help"
+  },
+  "keywords": [
+    "copilot",
+    "cursor",
+    "windsurf",
+    "claude-code",
+    "codex",
+    "prompts",
+    "agents",
+    "cli",
+    "easyspec"
+  ],
+  "license": "MIT"
+}
