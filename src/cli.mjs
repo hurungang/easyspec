@@ -6,14 +6,66 @@ import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 
 const SUPPORTED_IDES = ["vscode", "vscode-insiders", "cursor", "windsurf"];
-const SUPPORTED_AGENTS = ["copilot", "cursor", "windsurf", "claude-code", "codex"];
+const SUPPORTED_AGENTS = ["copilot", "opencode", "cursor", "windsurf", "claude-code", "claude", "codex"];
+
+const TOOL_PROFILES = {
+  copilot: {
+    configDir: ".copilot",
+    agentExt: ".agent.md",
+    promptExt: ".prompt.md",
+    skillDir: ".github/skills",
+  },
+  opencode: {
+    configDir: ".opencode",
+    homeConfigDir: ".config/opencode",
+    agentExt: ".md",
+    promptExt: ".md",
+    commandDir: "commands",
+    skillDir: "skills",
+  },
+  cursor: {
+    configDir: ".cursor",
+    agentExt: ".agent.md",
+    promptExt: ".prompt.md",
+    skillDir: ".cursor/skills",
+  },
+  windsurf: {
+    configDir: ".windsurf",
+    agentExt: ".agent.md",
+    promptExt: ".prompt.md",
+    skillDir: ".windsurf/skills",
+  },
+  "claude-code": {
+    configDir: ".claude",
+    agentExt: ".agent.md",
+    promptExt: ".prompt.md",
+    skillDir: ".claude/skills",
+  },
+  claude: {
+    configDir: ".claude",
+    agentExt: ".agent.md",
+    promptExt: ".prompt.md",
+    skillDir: ".claude/skills",
+  },
+  codex: {
+    configDir: ".codex",
+    agentExt: ".agent.md",
+    promptExt: ".prompt.md",
+    skillDir: ".codex/skills",
+  },
+};
+
 const TEMPLATE_PROFILE_BY_AGENT = {
   copilot: "copilot",
+  opencode: "opencode",
   cursor: "copilot",
   windsurf: "copilot",
-  "claude-code": "copilot",
+  "claude-code": "opencode",
+  claude: "opencode",
   codex: "copilot",
 };
+
+const TECHNICAL_AGENT_NAMES = new Set(["es-architect", "es-database-designer", "es-developer", "es-tester"]);
 const MODEL_OPTIONS = [
   "GPT-5 (copilot)",
   "Claude Sonnet 4.5 (copilot)",
@@ -35,7 +87,6 @@ const MODEL_PRESETS = {
   },
 };
 const MODEL_PRESET_OPTIONS = Object.keys(MODEL_PRESETS);
-const TECHNICAL_AGENT_NAMES = new Set(["architect", "database_designer", "developer", "tester"]);
 
 function defaultPromptSourcePath() {
   if (process.platform === "win32") {
@@ -68,7 +119,7 @@ Usage:
   easyspec-init --help
 
 Options:
-  --agent <copilot|cursor|windsurf|claude-code|codex>
+  --agent <copilot|opencode|cursor|windsurf|claude-code|claude|codex>
                                   Coding agent target (default: copilot)
   --scope <project|global>        Install scope (default: project)
   --ide <auto|vscode|vscode-insiders|cursor|windsurf>
@@ -90,10 +141,11 @@ Options:
 
 Examples:
   easyspec init --scope project --agent copilot
+  easyspec init --scope project --agent opencode
   easyspec init --scope global --agent cursor --ide cursor
   easyspec init --scope project --model-preset balanced
   easyspec init --scope project --tech-model "GPT-5 (copilot)" --non-tech-model "Claude Sonnet 4.5 (copilot)"
-  easyspec sync --template-profile copilot
+  easyspec sync --template-profile core
 `);
 }
 
@@ -109,7 +161,7 @@ function parseArgs(argv) {
     ideUserSync: true,
     sourcePrompts: defaultPromptSourcePath(),
     sourceAgents: defaultAgentSourcePath(),
-    templateProfile: "copilot",
+    templateProfile: "core",
     includeAgents: null,
     techModel: null,
     nonTechModel: null,
@@ -241,25 +293,31 @@ function detectIde(preferred) {
 }
 
 function getAgentRootInWorkspace(agent, workspace) {
-  const map = {
-    copilot: ".copilot",
-    cursor: ".cursor",
-    windsurf: ".windsurf",
-    "claude-code": ".claude",
-    codex: ".codex",
-  };
-  return path.resolve(workspace, map[agent]);
+  const profile = TOOL_PROFILES[agent];
+  if (!profile) {
+    throw new Error(`Unsupported agent '${agent}'.`);
+  }
+  return path.resolve(workspace, profile.configDir);
 }
 
 function getAgentRootInHome(agent) {
-  const map = {
-    copilot: ".copilot",
-    cursor: ".cursor",
-    windsurf: ".windsurf",
-    "claude-code": ".claude",
-    codex: ".codex",
-  };
-  return path.join(os.homedir(), map[agent]);
+  const profile = TOOL_PROFILES[agent];
+  if (!profile) {
+    throw new Error(`Unsupported agent '${agent}'.`);
+  }
+  const dir = profile.homeConfigDir || profile.configDir;
+  return path.join(os.homedir(), dir);
+}
+
+function getSkillRoot(rootPath, agent) {
+  const profile = TOOL_PROFILES[agent];
+  if (!profile) {
+    throw new Error(`Unsupported agent '${agent}'.`);
+  }
+  if (profile.skillDir.startsWith(".")) {
+    return path.resolve(path.dirname(rootPath), profile.skillDir);
+  }
+  return path.resolve(rootPath, profile.skillDir);
 }
 
 function ensureDir(dirPath, dryRun) {
@@ -309,10 +367,118 @@ function mergeSummary(target, partial) {
   target.skipped += partial.skipped;
 }
 
-function installToRoot(rootPath, sourceRoot, options) {
+function copySkillDirectory(srcSkillDir, destSkillDir, contentDir, options) {
+  const summary = { copied: 0, overwritten: 0, skipped: 0 };
+  if (!fs.existsSync(srcSkillDir)) {
+    return summary;
+  }
+
+  ensureDir(destSkillDir, options.dryRun);
+
+  const entries = fs.readdirSync(srcSkillDir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+    const skillSrc = path.join(srcSkillDir, entry.name);
+    const skillDest = path.join(destSkillDir, entry.name);
+    const skillFiles = fs.readdirSync(skillSrc, { withFileTypes: true });
+    ensureDir(skillDest, options.dryRun);
+    for (const skillFile of skillFiles) {
+      if (!skillFile.isFile() || skillFile.name.endsWith(".body.md")) {
+        continue;
+      }
+      const sfSrc = path.join(skillSrc, skillFile.name);
+      const sfDest = path.join(skillDest, skillFile.name);
+      const exists = fs.existsSync(sfDest);
+
+      if (exists && !options.force) {
+        summary.skipped += 1;
+        continue;
+      }
+
+      const rendered = renderTemplate(sfSrc, contentDir, options, `skills/${entry.name}`);
+      if (rendered === null) {
+        summary.skipped += 1;
+        continue;
+      }
+
+      if (!options.dryRun) {
+        fs.writeFileSync(sfDest, rendered, "utf8");
+      }
+      summary[exists ? "overwritten" : "copied"] += 1;
+    }
+  }
+
+  return summary;
+}
+
+function renderTemplate(templatePath, contentDir, options, bodySubPath) {
+  const template = fs.readFileSync(templatePath, "utf8");
+  if (!template.includes("{{body}}")) {
+    return template;
+  }
+
+  const entType = bodySubPath || path.basename(path.dirname(templatePath));
+  const templateName = path.basename(templatePath);
+  const bodyName = templateName.replace(/\.(agent|prompt)\.md$/, ".body.md");
+  const finalBodyName = bodyName === templateName ? templateName.replace(/\.md$/, ".body.md") : bodyName;
+  const bodyPath = path.join(contentDir, entType, finalBodyName);
+
+  if (!fs.existsSync(bodyPath)) {
+    if (!options.silent) {
+      console.warn(`[easyspec-init] no body content found for ${templateName}, skipping`);
+    }
+    return null;
+  }
+
+  const body = fs.readFileSync(bodyPath, "utf8").trimEnd();
+  return template.replace("{{body}}", body);
+}
+
+function renderDirectoryContents(templateDir, destDir, contentDir, options) {
+  const summary = {
+    copied: 0,
+    overwritten: 0,
+    skipped: 0,
+  };
+  ensureDir(destDir, options.dryRun);
+
+  const entries = fs.readdirSync(templateDir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isFile()) {
+      continue;
+    }
+    const src = path.join(templateDir, entry.name);
+    const dest = path.join(destDir, entry.name);
+    const exists = fs.existsSync(dest);
+
+    if (exists && !options.force) {
+      summary.skipped += 1;
+      continue;
+    }
+
+    const rendered = renderTemplate(src, contentDir, options);
+    if (rendered === null) {
+      summary.skipped += 1;
+      continue;
+    }
+
+    if (!options.dryRun) {
+      ensureDir(destDir, false);
+      fs.writeFileSync(dest, rendered, "utf8");
+    }
+    summary[exists ? "overwritten" : "copied"] += 1;
+  }
+
+  return summary;
+}
+
+function installToRoot(rootPath, sourceRoot, contentRoot, agent, options, skipSkills) {
   const promptsSrc = path.join(sourceRoot, "prompts");
   const agentsSrc = path.join(sourceRoot, "agents");
-  const promptsDest = path.join(rootPath, "prompts");
+  const commandDir = (TOOL_PROFILES[agent] && TOOL_PROFILES[agent].commandDir) || "prompts";
+  const promptsDest = path.join(rootPath, commandDir);
   const agentsDest = path.join(rootPath, "agents");
 
   const summary = {
@@ -321,8 +487,14 @@ function installToRoot(rootPath, sourceRoot, options) {
     skipped: 0,
   };
 
-  mergeSummary(summary, copyDirectoryContents(promptsSrc, promptsDest, options));
-  mergeSummary(summary, copyDirectoryContents(agentsSrc, agentsDest, options));
+  mergeSummary(summary, renderDirectoryContents(promptsSrc, promptsDest, contentRoot, options));
+  mergeSummary(summary, renderDirectoryContents(agentsSrc, agentsDest, contentRoot, options));
+
+  if (!skipSkills) {
+    const contentSkillsDir = path.join(contentRoot, "skills");
+    const skillDest = getSkillRoot(rootPath, agent);
+    mergeSummary(summary, copySkillDirectory(contentSkillsDir, skillDest, contentRoot, options));
+  }
 
   return {
     rootPath,
@@ -338,13 +510,17 @@ function resolveSourceRoot(baseTemplatesDir, agent) {
   return path.join(baseTemplatesDir, profile);
 }
 
+function resolveContentRoot(baseTemplatesDir) {
+  return path.join(baseTemplatesDir, "content");
+}
+
 function collectPromptFiles(promptDir) {
   if (!promptDir || !fs.existsSync(promptDir)) {
     throw new Error(`Prompt source directory does not exist: ${promptDir}`);
   }
   return fs
     .readdirSync(promptDir, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && /^change-.*\.prompt\.md$/i.test(entry.name))
+    .filter((entry) => entry.isFile() && /^es-change-.*\.prompt\.md$/i.test(entry.name))
     .map((entry) => path.join(promptDir, entry.name));
 }
 
@@ -369,10 +545,12 @@ function syncTemplates(args, templatesDir, dryRun, force) {
   const profileDir = path.join(templatesDir, args.templateProfile);
   const promptDestDir = path.join(profileDir, "prompts");
   const agentDestDir = path.join(profileDir, "agents");
+  const skillDestDir = path.join(profileDir, "skills");
 
   if (!dryRun) {
     fs.mkdirSync(promptDestDir, { recursive: true });
     fs.mkdirSync(agentDestDir, { recursive: true });
+    fs.mkdirSync(skillDestDir, { recursive: true });
   }
 
   const promptFiles = collectPromptFiles(args.sourcePrompts);
@@ -380,6 +558,7 @@ function syncTemplates(args, templatesDir, dryRun, force) {
   const summary = {
     prompts: { copied: 0, overwritten: 0, skipped: 0 },
     agents: { copied: 0, overwritten: 0, skipped: 0, missing: [] },
+    skills: { copied: 0, overwritten: 0, skipped: 0 },
   };
 
   for (const srcPromptFile of promptFiles) {
@@ -397,6 +576,10 @@ function syncTemplates(args, templatesDir, dryRun, force) {
     const destAgentFile = path.join(agentDestDir, `${agentName}.agent.md`);
     const result = copyFileWithPolicy(srcAgentFile, destAgentFile, { force, dryRun });
     summary.agents[result] += 1;
+  }
+
+  if (args.sourceSkills && fs.existsSync(args.sourceSkills)) {
+    mergeSummary(summary.skills, copySkillDirectory(args.sourceSkills, skillDestDir, { force, dryRun }));
   }
 
   return {
@@ -426,16 +609,12 @@ function upsertModelInFrontmatter(content, model) {
   const frontmatterBlock = content.slice(0, closeIdx + 5);
   const rest = content.slice(closeIdx + 5);
   const modelRe = /^model:\s*.*$/m;
-  let updatedFrontmatter;
 
   if (modelRe.test(frontmatterBlock)) {
-    updatedFrontmatter = frontmatterBlock.replace(modelRe, `model: "${model}"`);
-  } else {
-    const insertAt = frontmatterBlock.lastIndexOf("\n---\n");
-    updatedFrontmatter = `${frontmatterBlock.slice(0, insertAt)}\nmodel: "${model}"${frontmatterBlock.slice(insertAt)}`;
+    return `${frontmatterBlock.replace(modelRe, `model: "${model}"`)}${rest}`;
   }
 
-  return `${updatedFrontmatter}${rest}`;
+  return content;
 }
 
 function applyModelSelectionsToRoot(rootPath, selection, dryRun) {
@@ -642,6 +821,9 @@ export async function runCli(argv) {
     console.log(`[easyspec-init] source agents: ${report.sourceAgents}`);
     console.log(`[easyspec-init] prompts -> copied=${report.summary.prompts.copied} overwritten=${report.summary.prompts.overwritten} skipped=${report.summary.prompts.skipped}`);
     console.log(`[easyspec-init] agents  -> copied=${report.summary.agents.copied} overwritten=${report.summary.agents.overwritten} skipped=${report.summary.agents.skipped}`);
+    if (report.summary.skills) {
+      console.log(`[easyspec-init] skills  -> copied=${report.summary.skills.copied} overwritten=${report.summary.skills.overwritten} skipped=${report.summary.skills.skipped}`);
+    }
     if (report.summary.agents.missing.length > 0) {
       console.warn(`[easyspec-init] missing agent files: ${report.summary.agents.missing.join(", ")}`);
     }
@@ -665,6 +847,11 @@ export async function runCli(argv) {
     throw new Error(`Template directory not found: ${sourceRoot}`);
   }
 
+  const contentRoot = resolveContentRoot(templatesDir);
+  if (!fs.existsSync(contentRoot)) {
+    throw new Error(`Content directory not found: ${contentRoot}`);
+  }
+
   const ide = detectIde(args.ide);
   if (args.ide !== "auto" && !ide) {
     throw new Error(`Could not resolve IDE path for '${args.ide}'.`);
@@ -673,6 +860,7 @@ export async function runCli(argv) {
   const options = {
     force: args.force,
     dryRun: args.dryRun,
+    workspace: args.workspace,
   };
   const modelSelection = await resolveModelSelection(args);
 
@@ -680,17 +868,17 @@ export async function runCli(argv) {
 
   if (args.scope === "project") {
     const projectRoot = getAgentRootInWorkspace(args.agent, args.workspace);
-    installReports.push(installToRoot(projectRoot, sourceRoot, options));
+    installReports.push(installToRoot(projectRoot, sourceRoot, contentRoot, args.agent, options));
   } else {
     const userAgentRoot = getAgentRootInHome(args.agent);
-    installReports.push(installToRoot(userAgentRoot, sourceRoot, options));
+    installReports.push(installToRoot(userAgentRoot, sourceRoot, contentRoot, args.agent, options));
 
     if (args.ideUserSync && ["copilot", "cursor", "windsurf"].includes(args.agent)) {
       const resolvedIde = ide || detectIde("auto");
       if (resolvedIde) {
         const ideUserRoot = getIdeUserPath(resolvedIde);
         if (ideUserRoot) {
-          installReports.push(installToRoot(ideUserRoot, sourceRoot, options));
+          installReports.push(installToRoot(ideUserRoot, sourceRoot, contentRoot, args.agent, options, true));
         }
       } else {
         console.warn("[easyspec-init] No supported IDE user folder detected. Skipping IDE user sync.");
