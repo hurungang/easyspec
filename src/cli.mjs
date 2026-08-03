@@ -367,6 +367,94 @@ function mergeSummary(target, partial) {
   target.skipped += partial.skipped;
 }
 
+function parseFrontmatter(content) {
+  if (!content.startsWith("---\n")) {
+    return { frontmatter: {}, body: content };
+  }
+
+  const closeIdx = content.indexOf("\n---\n", 4);
+  if (closeIdx === -1) {
+    return { frontmatter: {}, body: content };
+  }
+
+  const fmBlock = content.slice(4, closeIdx);
+  const body = content.slice(closeIdx + 5);
+
+  const frontmatter = {};
+  for (const line of fmBlock.split("\n")) {
+    const colonIdx = line.indexOf(":");
+    if (colonIdx === -1) continue;
+    const key = line.slice(0, colonIdx).trim();
+    let value = line.slice(colonIdx + 1).trim();
+    if ((value.startsWith("'") && value.endsWith("'")) ||
+        (value.startsWith('"') && value.endsWith('"'))) {
+      value = value.slice(1, -1);
+    }
+    frontmatter[key] = value;
+  }
+
+  return { frontmatter, body };
+}
+
+function findGenericTemplate(templateDir) {
+  const entries = fs.readdirSync(templateDir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.isFile() && entry.name.startsWith("_template")) {
+      return path.join(templateDir, entry.name);
+    }
+  }
+  return null;
+}
+
+function renderEntitiesFromContent(templateDir, destDir, contentDir, entityType, entityExt, options) {
+  const summary = { copied: 0, overwritten: 0, skipped: 0 };
+
+  const genericTemplatePath = findGenericTemplate(templateDir);
+  if (!genericTemplatePath) {
+    return summary;
+  }
+
+  const genericTemplate = fs.readFileSync(genericTemplatePath, "utf8");
+  const contentEntityDir = path.join(contentDir, entityType);
+  if (!fs.existsSync(contentEntityDir)) {
+    return summary;
+  }
+
+  const bodyFiles = fs.readdirSync(contentEntityDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".body.md"));
+
+  for (const bodyFile of bodyFiles) {
+    const bodyPath = path.join(contentEntityDir, bodyFile.name);
+    const bodyContent = fs.readFileSync(bodyPath, "utf8");
+    const { frontmatter, body } = parseFrontmatter(bodyContent);
+
+    const entityName = frontmatter.name || bodyFile.name.replace(".body.md", "");
+    const destName = `${entityName}${entityExt}`;
+    const destPath = path.join(destDir, destName);
+    const exists = fs.existsSync(destPath);
+
+    if (exists && !options.force) {
+      summary.skipped += 1;
+      continue;
+    }
+
+    let rendered = genericTemplate
+      .replace(/{{name}}/g, frontmatter.name || "")
+      .replace(/{{description}}/g, frontmatter.description || "")
+      .replace(/{{model}}/g, frontmatter.model || "")
+      .replace(/{{tools}}/g, frontmatter.tools || "")
+      .replace(/{{body}}/g, body.trimEnd());
+
+    if (!options.dryRun) {
+      ensureDir(destDir, false);
+      fs.writeFileSync(destPath, rendered, "utf8");
+    }
+    summary[exists ? "overwritten" : "copied"] += 1;
+  }
+
+  return summary;
+}
+
 function copySkillDirectory(srcSkillDir, destSkillDir, contentDir, options) {
   const summary = { copied: 0, overwritten: 0, skipped: 0 };
   if (!fs.existsSync(srcSkillDir)) {
@@ -475,9 +563,10 @@ function renderDirectoryContents(templateDir, destDir, contentDir, options) {
 }
 
 function installToRoot(rootPath, sourceRoot, contentRoot, agent, options, skipSkills) {
+  const profile = TOOL_PROFILES[agent];
   const promptsSrc = path.join(sourceRoot, "prompts");
   const agentsSrc = path.join(sourceRoot, "agents");
-  const commandDir = (TOOL_PROFILES[agent] && TOOL_PROFILES[agent].commandDir) || "prompts";
+  const commandDir = profile.commandDir || "prompts";
   const promptsDest = path.join(rootPath, commandDir);
   const agentsDest = path.join(rootPath, "agents");
 
@@ -487,8 +576,8 @@ function installToRoot(rootPath, sourceRoot, contentRoot, agent, options, skipSk
     skipped: 0,
   };
 
-  mergeSummary(summary, renderDirectoryContents(promptsSrc, promptsDest, contentRoot, options));
-  mergeSummary(summary, renderDirectoryContents(agentsSrc, agentsDest, contentRoot, options));
+  mergeSummary(summary, renderEntitiesFromContent(promptsSrc, promptsDest, contentRoot, "prompts", profile.promptExt, options));
+  mergeSummary(summary, renderEntitiesFromContent(agentsSrc, agentsDest, contentRoot, "agents", profile.agentExt, options));
 
   if (!skipSkills) {
     const contentSkillsDir = path.join(contentRoot, "skills");

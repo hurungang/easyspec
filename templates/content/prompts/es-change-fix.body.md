@@ -1,3 +1,7 @@
+---
+name: es-change-fix
+description: es-change-fix command
+---
 
 Fix an issue in an existing change through a systematic test-driven approach with full documentation updates.
 

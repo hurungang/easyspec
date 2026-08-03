@@ -1,3 +1,7 @@
+---
+name: es-change-apply
+description: es-change-apply command
+---
 
 Implement a change by orchestrating the developer and es-tester agents against the prepared change docs.
 

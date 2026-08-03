@@ -1,0 +1,16 @@
+name: add-npm-publish-workflow
+created_at: 2026-08-03
+status: implemented
+scope:
+  has_ui_changes: false
+  has_architecture_changes: false
+  has_db_changes: false
+  has_deployment_changes: true
+  has_operations_changes: false
+agents_complete:
+  es-product-owner: true
+  es-ux-specialist: skipped
+  es-architect: skipped
+  es-database-designer: skipped
+  es-developer: true
+  es-tester: true

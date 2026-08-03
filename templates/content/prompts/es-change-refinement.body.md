@@ -1,3 +1,7 @@
+---
+name: es-change-refinement
+description: es-change-refinement command
+---
 
 Incorporate an adjustment into an existing change by cascading it through all completed work — documentation, implementation, and tests.
 

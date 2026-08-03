@@ -1,3 +1,7 @@
+---
+name: es-change-review
+description: es-change-review command
+---
 
 Review master product docs under `docs/` for quality, accuracy, and freshness.
 

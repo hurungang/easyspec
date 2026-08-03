@@ -10,25 +10,29 @@ Supports **GitHub Copilot**, **OpenCode**, **Claude Code**, **Cursor**, **Windsu
 ┌──────────────────────────────────────────────────────────────────────┐
 │                         easyspec Kit                                 │
 │                                                                      │
-│  templates/core/  ──  shared canonical source                       │
+│  templates/content/  ──  shared canonical source                    │
+│                         (body files with frontmatter)                │
 │                                                                      │
 │  ┌─────────────────────┐    ┌────────────────────┐    ┌───────────┐ │
 │  │      prompts/        │    │      agents/        │    │  skills/  │ │
-│  │  (7 command prompts) │────│  (7 specialist      │────│           │ │
-│  │                      │    │   agents)            │    │           │ │
+│  │  (8 command bodies)  │────│  (7 specialist      │────│           │ │
+│  │                      │    │   agent bodies)      │    │           │ │
 │  └─────────────────────┘    └────────────────────┘    └───────────┘ │
 │                                                                      │
-│  CLI (easyspec init) ──  transforms & installs per target tool      │
+│  templates/<tool>/  ──  generic templates per tool per entity type  │
+│                         (one _template file per type, not per item)  │
+│                                                                      │
+│  CLI (easyspec init) ──  renders bodies through tool template       │
 └──────────────────────────────────────────────────────────────────────┘
                                      │
           ┌──────────────────────────┼──────────────────────────┐
           ▼                          ▼                          ▼
-    ┌──────────┐              ┌──────────┐              ┌──────────┐
-    │ .copilot │              │.opencode │              │  .claude │
-    │ prompts/ │              │ prompts/ │              │ prompts/ │
-    │ agents/  │              │ agents/  │              │ agents/  │
-    │ skills/  │              │ skills/  │              │ skills/  │
-    └──────────┘              └──────────┘              └──────────┘
+     ┌──────────┐              ┌──────────┐              ┌──────────┐
+     │ .copilot │              │.opencode │              │  .claude │
+     │ prompts/ │              │ commands/│              │ prompts/ │
+     │ agents/  │              │ agents/  │              │ agents/  │
+     │ skills/  │              │ skills/  │              │ skills/  │
+     └──────────┘              └──────────┘              └──────────┘
 ```
 
 ## Entity Relationship Diagram
@@ -45,6 +49,7 @@ flowchart TD
         APPLY[es-change-apply<br/>Implement change]
         REFINE[es-change-refinement<br/>Refine existing change]
         FIX[es-change-fix<br/>Fix bugs test-driven]
+        QFIX[es-quick-fix<br/>Quick bug fix<br/>no change docs]
         REVIEW[es-change-review<br/>Audit master docs]
         UPDATE[es-change-update-master<br/>Update master from change]
     end
@@ -93,6 +98,12 @@ flowchart TD
     FIX --> PO
     FIX --> DOCREV
 
+    QFIX --> TEST
+    QFIX --> DEV
+    QFIX --> ARCH
+    QFIX --> DB
+    QFIX --> UX
+
     UPDATE --> PO
     UPDATE --> UX
     UPDATE --> ARCH
@@ -120,6 +131,7 @@ flowchart TD
 | `es-change-apply` | developer, database-designer, tester |
 | `es-change-refinement` | product-owner, ux-specialist, architect, database-designer, developer, tester, document-reviewer |
 | `es-change-fix` | tester, developer, product-owner, document-reviewer |
+| `es-quick-fix` | developer, tester, architect, database-designer, ux-specialist |
 | `es-change-review` | (standalone — audits master docs) |
 | `es-change-update-master` | product-owner, ux-specialist, architect, database-designer, developer, tester |
 
@@ -151,16 +163,20 @@ es-change-review  →  Audit master docs for quality and freshness
 
 es-change-fix     →  Test-driven bug fixing with fix log
 
+es-quick-fix      →  Quick bug fix (no change docs required)
+
 es-change-refinement →  Incorporate adjustments into existing changes
 ```
 
 ## Install
 
+**Recommended** — install globally for permanent use:
+
 ```bash
 npm install -g easyspec-prompts
 ```
 
-Or run without global install:
+**Try without installing** — run once via npx:
 
 ```bash
 npx easyspec-prompts init --scope project
@@ -208,7 +224,7 @@ The CLI updates the `model:` field in each installed `*.agent.md` file.
 | Agent | Prompt Destination | Agent Destination | Skill Destination |
 |-------|-------------------|-------------------|-------------------|
 | `copilot` | `<workspace>/.copilot/prompts/` | `<workspace>/.copilot/agents/` | `<workspace>/.github/skills/` |
-| `opencode` | `<workspace>/.opencode/prompts/` | `<workspace>/.opencode/agents/` | `<workspace>/.opencode/skills/` |
+| `opencode` | `<workspace>/.opencode/commands/` | `<workspace>/.opencode/agents/` | `<workspace>/.opencode/skills/` |
 | `cursor` | `<workspace>/.cursor/prompts/` | `<workspace>/.cursor/agents/` | `<workspace>/.cursor/skills/` |
 | `windsurf` | `<workspace>/.windsurf/prompts/` | `<workspace>/.windsurf/agents/` | `<workspace>/.windsurf/skills/` |
 | `claude-code` / `claude` | `<workspace>/.claude/prompts/` | `<workspace>/.claude/agents/` | `<workspace>/.claude/skills/` |
@@ -275,6 +291,7 @@ Options:
 | `es-change-fix.prompt.md` | `/es-change-fix` |
 | `es-change-review.prompt.md` | `/es-change-review` |
 | `es-change-update-master.prompt.md` | `/es-change-update-master` |
+| `es-quick-fix.prompt.md` | `/es-quick-fix` |
 
 ### Agents
 
@@ -294,7 +311,30 @@ Options:
 |-----------|-----------|
 | `es-change-lifecycle/SKILL.md` | `es-change-lifecycle` |
 
-## Adding new tools
+## Adding new prompts or agents
+
+To add a new command or agent, only **one file** is needed — a content body file with frontmatter:
+
+```
+templates/content/prompts/<name>.body.md   (for commands)
+templates/content/agents/<name>.body.md    (for agents)
+```
+
+Each body file carries its own frontmatter as the single source of truth:
+
+```markdown
+---
+name: <entity-name>
+description: <description>
+model: <model>        (agents only)
+tools: [<tool-list>]  (agents only)
+---
+<body content>
+```
+
+The generic templates in `templates/<tool>/<type>/_template.*` extract only the fields each tool needs. No per-entity template files are required.
+
+### Adding a new tool
 
 To add support for a new agentic coding tool:
 
@@ -312,14 +352,21 @@ To add support for a new agentic coding tool:
 
 ## Release
 
-1. Bump `package.json` version.
-2. Create and push a tag (e.g., `v0.1.0`).
-3. Publish a GitHub Release — GitHub Actions publishes to npm.
+Publishing is automated via the `Easyspec NPM Release` workflow. Just push a version tag:
 
-Requires `NPM_TOKEN` repository secret.
+1. Bump the `version` field in `package.json`.
+2. Create and push a tag matching the new version (e.g., `git tag v0.1.0 && git push origin v0.1.0`).
+3. GitHub Actions automatically tests and publishes to npm — no manual steps needed.
+
+**Tag naming convention**:
+- Stable releases: `v<semver>` (e.g., `v0.2.0`) — publishes to the `latest` dist-tag.
+- Beta prereleases: `v<semver>-beta.<n>` (e.g., `v0.2.0-beta.1`) — publishes to the `beta` dist-tag.
+
+Alternatively, run the workflow manually from the Actions tab and choose the desired `dist-tag` (`latest`, `beta`, or `alpha`).
 
 ## Notes
 
 - All entity names use the `es-` prefix to avoid overriding user-defined agents, prompts, or skills.
-- The `templates/core/` directory is the canonical shared source. Legacy `templates/copilot/` is preserved but no longer the default.
-- Non-Copilot agents reuse the same Markdown payload; per-tool transformations happen at install time via `TOOL_PROFILES`.
+- Content body files in `templates/content/` are the canonical source. Each carries its own frontmatter (`name`, `description`, `model`, `tools`) as the single source of truth.
+- Generic templates in `templates/<tool>/<type>/_template.*` handle per-tool formatting — one template per tool per entity type, not per entity.
+- Non-Copilot agents reuse the same Markdown payload; per-tool transformations happen at install time via generic templates and `TOOL_PROFILES`.

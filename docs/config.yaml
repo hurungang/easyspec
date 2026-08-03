@@ -1,0 +1,38 @@
+# Change Lifecycle Configuration
+# Provides project-specific context for the /es-change-* workflow tools.
+# All agents read this file first before starting any task.
+# Run /es-change-init to update this file when the project evolves.
+
+project:
+  name: easyspec-prompts
+  description: Spec-driven development kit for agentic coding tools — a shared set of prompts (commands), custom agent definitions, and skills that orchestrate a software engineering agent team through the full change lifecycle.
+
+# Source code locations — used by agents to resolve code references
+source:
+  frontend: null
+  backend: src/
+  schema: null
+  tests:
+    - tests/
+
+# Technology stack — context for agents, not prescriptive
+tech_stack:
+  frontend: null
+  backend: Node.js CLI (ESM)
+  database: null
+  auth: null
+  infra: GitHub Actions
+
+# Key project conventions — agents follow these when making decisions
+conventions:
+  - ESM modules ("type": "module" in package.json)
+  - CLI binary at bin/easyspec-init.js aliased as "easyspec" and "easyspec-init"
+  - Templates in templates/content/ are canonical source for prompts, agents, and skills
+  - Package published to npm as "easyspec-prompts"
+  - No build step — source is distributed directly
+
+# Domain knowledge — business rules agents must always know
+domain:
+  - This is the easyspec source repo itself — changes affect the kit distributed to other projects
+  - Templates are transformed at install time per target agent tool (copilot, opencode, etc.)
+  - All entity names use "es-" prefix to avoid overriding user-defined agents/prompts/skills

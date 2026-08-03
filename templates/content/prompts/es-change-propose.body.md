@@ -1,3 +1,7 @@
+---
+name: es-change-propose
+description: es-change-propose command
+---
 
 Create a new change with a complete documentation set by orchestrating the agent team.
 

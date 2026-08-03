@@ -1,3 +1,7 @@
+---
+name: es-change-init
+description: es-change-init command
+---
 
 Initialize or update `docs/config.yaml` by scanning the project structure and asking targeted questions.
 

@@ -1,3 +1,7 @@
+---
+name: es-change-update-master
+description: es-change-update-master command
+---
 
 Update master product docs by applying a completed change's documentation to the canonical `docs/` folder.
 

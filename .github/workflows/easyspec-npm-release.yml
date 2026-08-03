@@ -1,0 +1,97 @@
+name: Easyspec NPM Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      dist-tag:
+        description: "npm dist-tag to publish under"
+        required: false
+        type: choice
+        default: "latest"
+        options:
+          - latest
+          - beta
+          - alpha
+
+concurrency:
+  group: easyspec-npm-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish-npm:
+    # npm trusted publishing + provenance requires a GitHub-hosted runner.
+    runs-on: ubuntu-latest
+    environment: npm-release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Validate release tag matches package version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          TAG_VERSION="${RELEASE_TAG#v}"
+
+          if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ]; then
+            echo "Error: Tag version '${TAG_VERSION}' does not match package.json version '${PACKAGE_VERSION}'."
+            echo "Update package.json version to match the tag, then push again."
+            exit 1
+          fi
+
+          echo "Tag version ${TAG_VERSION} matches package.json version ${PACKAGE_VERSION}."
+
+      - name: Ensure version is not already published
+        run: |
+          set -euo pipefail
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+
+          if npm view "easyspec-prompts@${PACKAGE_VERSION}" version >/dev/null 2>&1; then
+            echo "Error: easyspec-prompts@${PACKAGE_VERSION} is already published on npm."
+            exit 1
+          fi
+
+          echo "easyspec-prompts@${PACKAGE_VERSION} is not yet published. Proceeding..."
+
+      - name: Run tests
+        run: npm test
+
+      - name: Publish to npm
+        run: |
+          set -euo pipefail
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+
+          # Determine dist-tag:
+          #   - workflow_dispatch: use the user-selected input
+          #   - tag push: route *-beta.* to 'beta', everything else to 'latest' (default)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            DIST_TAG="${{ github.event.inputs.dist-tag }}"
+          elif [[ "$PACKAGE_VERSION" == *-beta.* ]]; then
+            DIST_TAG="beta"
+          else
+            DIST_TAG="latest"
+          fi
+
+          if [ "$DIST_TAG" = "latest" ]; then
+            echo "Publishing easyspec-prompts@${PACKAGE_VERSION} to latest dist-tag"
+            npm publish --access public --provenance
+          else
+            echo "Publishing easyspec-prompts@${PACKAGE_VERSION} to ${DIST_TAG} dist-tag"
+            npm publish --access public --tag "${DIST_TAG}" --provenance
+          fi
