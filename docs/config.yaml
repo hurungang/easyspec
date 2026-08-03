@@ -4,7 +4,7 @@
 # Run /es-change-init to update this file when the project evolves.
 
 project:
-  name: easyspec-prompts
+  name: "@myaider/easyspec"
   description: Spec-driven development kit for agentic coding tools — a shared set of prompts (commands), custom agent definitions, and skills that orchestrate a software engineering agent team through the full change lifecycle.
 
 # Source code locations — used by agents to resolve code references
@@ -28,7 +28,7 @@ conventions:
   - ESM modules ("type": "module" in package.json)
   - CLI binary at bin/easyspec-init.js aliased as "easyspec" and "easyspec-init"
   - Templates in templates/content/ are canonical source for prompts, agents, and skills
-  - Package published to npm as "easyspec-prompts"
+  - Package published to npm as "@myaider/easyspec"
   - No build step — source is distributed directly
 
 # Domain knowledge — business rules agents must always know

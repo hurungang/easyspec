@@ -61,12 +61,12 @@ jobs:
           set -euo pipefail
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
 
-          if npm view "easyspec-prompts@${PACKAGE_VERSION}" version >/dev/null 2>&1; then
-            echo "Error: easyspec-prompts@${PACKAGE_VERSION} is already published on npm."
+          if npm view "@myaider/easyspec@${PACKAGE_VERSION}" version >/dev/null 2>&1; then
+            echo "Error: @myaider/easyspec@${PACKAGE_VERSION} is already published on npm."
             exit 1
           fi
 
-          echo "easyspec-prompts@${PACKAGE_VERSION} is not yet published. Proceeding..."
+          echo "@myaider/easyspec@${PACKAGE_VERSION} is not yet published. Proceeding..."
 
       - name: Run tests
         run: npm test
@@ -85,9 +85,9 @@ jobs:
           fi
 
           if [ "$DIST_TAG" = "latest" ]; then
-            echo "Publishing easyspec-prompts@${PACKAGE_VERSION} to latest dist-tag"
+            echo "Publishing @myaider/easyspec@${PACKAGE_VERSION} to latest dist-tag"
             npm publish --access public --provenance
           else
-            echo "Publishing easyspec-prompts@${PACKAGE_VERSION} to ${DIST_TAG} dist-tag"
+            echo "Publishing @myaider/easyspec@${PACKAGE_VERSION} to ${DIST_TAG} dist-tag"
             npm publish --access public --tag "${DIST_TAG}" --provenance
           fi

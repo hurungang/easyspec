@@ -173,13 +173,13 @@ es-change-refinement →  Incorporate adjustments into existing changes
 **Recommended** — install globally for permanent use:
 
 ```bash
-npm install -g easyspec-prompts
+npm install -g @myaider/easyspec
 ```
 
 **Try without installing** — run once via npx:
 
 ```bash
-npx easyspec-prompts init --scope project
+npx @myaider/easyspec init --scope project
 ```
 
 ## Usage
