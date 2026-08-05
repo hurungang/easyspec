@@ -182,6 +182,10 @@ npm install -g @myaider/easyspec
 npx @myaider/easyspec init --scope project
 ```
 
+## Real-world usage
+
+easyspec was built to manage the development of [Parthenon](https://github.com/hurungang/parthenon) — an enterprise AI harness framework with 7+ microservices, 100+ documented features, and a complex architecture. The easyspec agent team manages everything from product specs to database migrations, keeping 100+ docs in sync across a multi-service codebase. If easyspec can tame Parthenon, it can handle your project.
+
 ## Usage
 
 ### Init — Install to a project or globally
