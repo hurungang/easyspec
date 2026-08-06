@@ -1,6 +1,12 @@
-# easyspec
+# easyspec — Spec-Driven Development Kit for AI Coding Agents
 
-Spec-driven development kit for agentic coding tools — a shared set of prompts (commands), custom agent definitions, and skills that orchestrate a software engineering agent team through the full change lifecycle.
+[![npm version](https://img.shields.io/npm/v/@myaider/easyspec.svg)](https://www.npmjs.com/package/@myaider/easyspec)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
+[![Status](https://img.shields.io/badge/status-active-success.svg)](https://github.com/hurungang/easyspec)
+[![Downloads](https://img.shields.io/npm/dm/@myaider/easyspec.svg)](https://www.npmjs.com/package/@myaider/easyspec)
+
+**One `init` command. A team of AI agents. Your entire software lifecycle — managed by specs, not chaos.**
 
 Supports **GitHub Copilot**, **OpenCode**, **Claude Code**, **Cursor**, **Windsurf**, and **Codex**.
 
@@ -181,6 +187,10 @@ npm install -g @myaider/easyspec
 ```bash
 npx @myaider/easyspec init --scope project
 ```
+
+## Quick Demo
+
+![easyspec init demo](docs/demo.gif)
 
 ## Real-world usage
 
