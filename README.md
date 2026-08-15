@@ -376,7 +376,7 @@ Publishing is automated via the `Easyspec NPM Release` workflow. Just push a ver
 - Stable releases: `v<semver>` (e.g., `v0.2.0`) — publishes to the `latest` dist-tag.
 - Beta prereleases: `v<semver>-beta.<n>` (e.g., `v0.2.0-beta.1`) — publishes to the `beta` dist-tag.
 
-Requires npm Trusted Publishing configured for this repo (no tokens needed).
+Requires an `NPM_TOKEN` repository secret — an npm Automation/Granular access token with publish permission for `@myaider/easyspec`. Generate it in npmjs.com → Access Tokens, then add it as a repository secret named `NPM_TOKEN`.
 
 Alternatively, run the workflow manually from the Actions tab and choose the desired `dist-tag` (`latest`, `beta`, or `alpha`).
 
