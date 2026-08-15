@@ -347,6 +347,20 @@ describe("CLI e2e", () => {
     }
   });
 
+  it("defaults models to auto without overriding template value", () => {
+    setupTmp();
+    runCli("init --scope project --agent copilot --force 2>/dev/null");
+
+    for (const agent of AGENTS) {
+      const filePath = path.join(tmpDir, ".copilot", "agents", `${agent}${TOOL_EXT.copilot.agentExt}`);
+      const content = readFile(filePath);
+      assert.ok(
+        content.includes("model: Auto (copilot)"),
+        `${agent}: should keep template default auto model`
+      );
+    }
+  });
+
   it("installed skill exists and has correct frontmatter", () => {
     setupTmp();
     runCli("init --scope project --agent opencode --force --no-model-prompt 2>/dev/null");

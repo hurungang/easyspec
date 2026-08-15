@@ -66,12 +66,6 @@ const TEMPLATE_PROFILE_BY_AGENT = {
 };
 
 const TECHNICAL_AGENT_NAMES = new Set(["es-architect", "es-database-designer", "es-developer", "es-tester"]);
-const MODEL_OPTIONS = [
-  "GPT-5 (copilot)",
-  "Claude Sonnet 4.5 (copilot)",
-  "Gemini 2.5 Pro (copilot)",
-  "auto",
-];
 const MODEL_PRESETS = {
   balanced: {
     technicalModel: "GPT-5 (copilot)",
@@ -86,7 +80,6 @@ const MODEL_PRESETS = {
     nonTechnicalModel: "GPT-5 (copilot)",
   },
 };
-const MODEL_PRESET_OPTIONS = Object.keys(MODEL_PRESETS);
 
 function defaultPromptSourcePath() {
   if (process.platform === "win32") {
@@ -120,8 +113,8 @@ Usage:
 
 Options:
   --agent <copilot|opencode|cursor|windsurf|claude-code|claude|codex>
-                                  Coding agent target (default: copilot)
-  --scope <project|global>        Install scope (default: project)
+                                  Coding agent target (prompts interactively if omitted)
+  --scope <project|global>        Install scope (prompts interactively if omitted)
   --ide <auto|vscode|vscode-insiders|cursor|windsurf>
                                   IDE target for user-level install (default: auto)
   --workspace <path>              Project folder for --scope project (default: cwd)
@@ -132,14 +125,14 @@ Options:
   --source-agents <path>          Source agent directory for sync command
   --template-profile <name>       Template profile to refresh (default: copilot)
   --include-agents <a,b,c>        Optional explicit agent list for sync
-  --tech-model <name>             Model for technical agents during init
-  --non-tech-model <name>         Model for non-technical agents during init
+  --tech-model <name>             Model for technical agents (default: auto)
+  --non-tech-model <name>         Model for non-technical agents (default: auto)
   --model-preset <balanced|speed|quality>
                                   Apply preset model pair before explicit overrides
-  --no-model-prompt               Do not ask model selection interactively
   --help                          Show this help
 
 Examples:
+  easyspec init
   easyspec init --scope project --agent copilot
   easyspec init --scope project --agent opencode
   easyspec init --scope global --agent cursor --ide cursor
@@ -167,6 +160,8 @@ function parseArgs(argv) {
     nonTechModel: null,
     modelPreset: null,
     modelPrompt: true,
+    agentExplicit: false,
+    scopeExplicit: false,
     help: false,
   };
 
@@ -194,9 +189,11 @@ function parseArgs(argv) {
       args.ideUserSync = false;
     } else if (token === "--scope") {
       args.scope = argv[i + 1];
+      args.scopeExplicit = true;
       i += 1;
     } else if (token === "--agent") {
       args.agent = argv[i + 1];
+      args.agentExplicit = true;
       i += 1;
     } else if (token === "--ide") {
       args.ide = argv[i + 1];
@@ -721,7 +718,7 @@ function applyModelSelectionsToRoot(rootPath, selection, dryRun) {
   for (const entry of files) {
     const modelKind = chooseModelKind(entry.name);
     const chosenModel = modelKind === "technical" ? selection.technicalModel : selection.nonTechnicalModel;
-    if (!chosenModel) {
+    if (!chosenModel || chosenModel === "auto") {
       summary.skipped += 1;
       continue;
     }
@@ -743,105 +740,57 @@ function applyModelSelectionsToRoot(rootPath, selection, dryRun) {
   return summary;
 }
 
-async function promptForModel(label) {
+const AGENT_LABELS = {
+  copilot: "GitHub Copilot (VS Code)",
+  opencode: "OpenCode",
+  cursor: "Cursor",
+  windsurf: "Windsurf",
+  "claude-code": "Claude Code",
+  claude: "Claude",
+  codex: "Codex",
+};
+
+async function promptForAgent() {
   const rl = createInterface({ input, output });
   try {
-    console.log(`[easyspec-init] select ${label} model:`);
-    MODEL_OPTIONS.forEach((model, idx) => {
-      console.log(`  ${idx + 1}. ${model}`);
+    console.log("[easyspec-init] select target harness (coding agent):");
+    SUPPORTED_AGENTS.forEach((agent, idx) => {
+      console.log(`  ${idx + 1}. ${agent}${AGENT_LABELS[agent] ? ` (${AGENT_LABELS[agent]})` : ""}`);
     });
-    console.log(`  ${MODEL_OPTIONS.length + 1}. custom`);
-
-    const choiceRaw = await rl.question(`[easyspec-init] Enter choice 1-${MODEL_OPTIONS.length + 1}: `);
-    const choice = Number.parseInt(choiceRaw, 10);
-    if (Number.isNaN(choice) || choice < 1 || choice > MODEL_OPTIONS.length + 1) {
-      throw new Error(`Invalid selection for ${label} model.`);
-    }
-
-    if (choice === MODEL_OPTIONS.length + 1) {
-      const custom = await rl.question(`[easyspec-init] Enter custom ${label} model value: `);
-      const value = custom.trim();
-      if (!value) {
-        throw new Error(`Custom ${label} model cannot be empty.`);
-      }
-      return value;
-    }
-
-    return MODEL_OPTIONS[choice - 1];
-  } finally {
-    rl.close();
-  }
-}
-
-async function promptForModelWithDefault(label, defaultValue) {
-  const rl = createInterface({ input, output });
-  try {
-    console.log(`[easyspec-init] select ${label} model:`);
-    if (defaultValue) {
-      console.log(`  0. keep current (${defaultValue})`);
-    }
-    MODEL_OPTIONS.forEach((model, idx) => {
-      console.log(`  ${idx + 1}. ${model}`);
-    });
-    console.log(`  ${MODEL_OPTIONS.length + 1}. custom`);
-
-    const lower = defaultValue ? 0 : 1;
-    const upper = MODEL_OPTIONS.length + 1;
-    const choiceRaw = await rl.question(`[easyspec-init] Enter choice ${lower}-${upper} (Enter to keep current): `);
-    const normalized = choiceRaw.trim() === "" && defaultValue ? "0" : choiceRaw;
+    const choiceRaw = await rl.question(`[easyspec-init] Enter choice 1-${SUPPORTED_AGENTS.length} (default: copilot): `);
+    const normalized = choiceRaw.trim() === "" ? "1" : choiceRaw;
     const choice = Number.parseInt(normalized, 10);
-    if (Number.isNaN(choice) || choice < lower || choice > upper) {
-      throw new Error(`Invalid selection for ${label} model.`);
+    if (Number.isNaN(choice) || choice < 1 || choice > SUPPORTED_AGENTS.length) {
+      throw new Error("Invalid harness selection.");
     }
-
-    if (defaultValue && choice === 0) {
-      return defaultValue;
-    }
-
-    if (choice === MODEL_OPTIONS.length + 1) {
-      const custom = await rl.question(`[easyspec-init] Enter custom ${label} model value: `);
-      const value = custom.trim();
-      if (!value) {
-        throw new Error(`Custom ${label} model cannot be empty.`);
-      }
-      return value;
-    }
-
-    return MODEL_OPTIONS[choice - 1];
+    return SUPPORTED_AGENTS[choice - 1];
   } finally {
     rl.close();
   }
 }
 
-async function promptForPreset() {
+async function promptForScope(agent, workspace) {
   const rl = createInterface({ input, output });
   try {
-    console.log("[easyspec-init] optional: choose a model preset first");
-    MODEL_PRESET_OPTIONS.forEach((preset, idx) => {
-      const value = MODEL_PRESETS[preset];
-      console.log(`  ${idx + 1}. ${preset} (tech=${value.technicalModel}, non-tech=${value.nonTechnicalModel})`);
-    });
-    console.log(`  ${MODEL_PRESET_OPTIONS.length + 1}. none (pick models manually)`);
-
-    const choiceRaw = await rl.question(`[easyspec-init] Enter choice 1-${MODEL_PRESET_OPTIONS.length + 1}: `);
-    const choice = Number.parseInt(choiceRaw, 10);
-    if (Number.isNaN(choice) || choice < 1 || choice > MODEL_PRESET_OPTIONS.length + 1) {
-      throw new Error("Invalid preset selection.");
-    }
-
-    if (choice === MODEL_PRESET_OPTIONS.length + 1) {
-      return null;
-    }
-
-    return MODEL_PRESET_OPTIONS[choice - 1];
+    const projectPath = getAgentRootInWorkspace(agent, workspace);
+    const globalPath = getAgentRootInHome(agent);
+    console.log("[easyspec-init] select install scope (level):");
+    console.log(`  1. project — install into current project (${projectPath})`);
+    console.log(`  2. global  — install into your user profile (${globalPath})`);
+    const choiceRaw = await rl.question("[easyspec-init] Enter choice 1-2 (default: project): ");
+    const normalized = choiceRaw.trim() === "" ? "1" : choiceRaw;
+    const choice = Number.parseInt(normalized, 10);
+    if (choice === 1) return "project";
+    if (choice === 2) return "global";
+    throw new Error("Invalid scope selection.");
   } finally {
     rl.close();
   }
 }
 
-async function resolveModelSelection(args) {
+function resolveModelSelection(args) {
   let preset = null;
-  let presetName = args.modelPreset || null;
+  const presetName = args.modelPreset || null;
   if (presetName) {
     preset = MODEL_PRESETS[presetName];
     if (!preset) {
@@ -849,45 +798,10 @@ async function resolveModelSelection(args) {
     }
   }
 
-  const techFromFlags = args.techModel || preset?.technicalModel || null;
-  const nonTechFromFlags = args.nonTechModel || preset?.nonTechnicalModel || null;
-
-  if (techFromFlags && nonTechFromFlags) {
-    return {
-      technicalModel: techFromFlags,
-      nonTechnicalModel: nonTechFromFlags,
-      prompted: false,
-      preset: presetName,
-    };
-  }
-
-  if (!args.modelPrompt || !process.stdin.isTTY) {
-    const technicalModel = techFromFlags || "auto";
-    const nonTechnicalModel = nonTechFromFlags || "auto";
-    return {
-      technicalModel,
-      nonTechnicalModel,
-      prompted: false,
-      preset: presetName,
-    };
-  }
-
-  const hasAnyExplicit = Boolean(args.techModel || args.nonTechModel || presetName);
-  if (!hasAnyExplicit) {
-    presetName = await promptForPreset();
-    preset = presetName ? MODEL_PRESETS[presetName] : null;
-  }
-
-  const technicalInitial = args.techModel || preset?.technicalModel || null;
-  const nonTechnicalInitial = args.nonTechModel || preset?.nonTechnicalModel || null;
-
-  const technicalModel = args.techModel || (await promptForModelWithDefault("technical", technicalInitial));
-  const nonTechnicalModel = args.nonTechModel || (await promptForModelWithDefault("non-technical", nonTechnicalInitial));
-
   return {
-    technicalModel,
-    nonTechnicalModel,
-    prompted: true,
+    technicalModel: args.techModel || preset?.technicalModel || "auto",
+    nonTechnicalModel: args.nonTechModel || preset?.nonTechnicalModel || "auto",
+    prompted: false,
     preset: presetName,
   };
 }
@@ -923,6 +837,15 @@ export async function runCli(argv) {
     throw new Error(`Unknown command '${args.command}'. Supported: init, sync.`);
   }
 
+  if (process.stdin.isTTY) {
+    if (!args.agentExplicit) {
+      args.agent = await promptForAgent();
+    }
+    if (!args.scopeExplicit) {
+      args.scope = await promptForScope(args.agent, args.workspace);
+    }
+  }
+
   if (!["project", "global"].includes(args.scope)) {
     throw new Error(`Invalid --scope value '${args.scope}'. Use project or global.`);
   }
@@ -951,7 +874,7 @@ export async function runCli(argv) {
     dryRun: args.dryRun,
     workspace: args.workspace,
   };
-  const modelSelection = await resolveModelSelection(args);
+  const modelSelection = resolveModelSelection(args);
 
   const installReports = [];
 
@@ -997,11 +920,7 @@ export async function runCli(argv) {
   }
   console.log(`[easyspec-init] ${args.dryRun ? "would update" : "updated"} model settings in ${modelUpdates} agent file(s).`);
 
-  if (!modelSelection.prompted && !args.techModel && !args.nonTechModel && !args.modelPreset) {
-    console.log("[easyspec-init] reminder: no interactive model selection was used; defaults were applied.");
-  }
-
-  console.log("[easyspec-init] reminder: review installed *.agent.md model values if you want per-agent overrides.");
+  console.log("[easyspec-init] reminder: models default to auto — review installed *.agent.md model values if you want per-agent overrides.");
   for (const agentDir of agentDirs) {
     console.log(`[easyspec-init] model settings location: ${agentDir}`);
   }
