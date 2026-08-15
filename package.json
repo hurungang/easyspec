@@ -1,6 +1,6 @@
 {
   "name": "@myaider/easyspec",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Shareable easyspec prompts, custom agent definitions, and skills with an init CLI for copilot, opencode, claude-code, and other agentic coding tools.",
   "type": "module",
   "bin": {
