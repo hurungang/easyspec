@@ -25,6 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -71,8 +72,6 @@ jobs:
         run: npm test
 
       - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
@@ -87,8 +86,8 @@ jobs:
 
           if [ "$DIST_TAG" = "latest" ]; then
             echo "Publishing @myaider/easyspec@${PACKAGE_VERSION} to latest dist-tag"
-            npm publish --access public
+            npm publish --access public --provenance
           else
             echo "Publishing @myaider/easyspec@${PACKAGE_VERSION} to ${DIST_TAG} dist-tag"
-            npm publish --access public --tag "${DIST_TAG}"
+            npm publish --access public --tag "${DIST_TAG}" --provenance
           fi
