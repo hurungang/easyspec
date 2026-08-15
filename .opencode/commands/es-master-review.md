@@ -1,9 +1,9 @@
 ---
 name: es-master-review
-description: 'Audit canonical master product docs for quality, accuracy, and freshness'
+description: 'Audit canonical master docs for quality and accuracy, and validate the codebase with a full test run'
 ---
 
-Review master product docs under `docs/` for quality, accuracy, and freshness.
+Review master product docs under `docs/` for quality, accuracy, and freshness, and run the full test suite to confirm a clean status.
 
 **Input**: Optionally specify scope (e.g., `/es-master-review tech` or `/es-master-review all`). Valid scopes: `all`, `product`, `ux`, `architecture`, `data-model`, `tech`, `qa`, `deployment`, `operations`, `reference`. Defaults to `all` if not specified.
 
@@ -44,7 +44,26 @@ For each folder in scope:
 
 ---
 
-## Step 4: Run Checks
+## Step 4: Run Full Test Suite
+
+Validate the codebase is healthy and the QA docs are accurate by running the project's tests:
+
+1. Determine the test command(s):
+   - Read `docs/config.yaml` `source.tests` for test directories.
+   - Read `package.json` (or equivalent build config) for the test script (e.g., `scripts.test`).
+   - Read `docs/master/qa/testing-strategy.md` for the documented test layers and commands.
+2. Run every test layer (unit, integration, e2e) using the documented commands.
+3. Capture the pass/fail summary, including failing test names and error output.
+4. Cross-check the QA docs:
+   - Every test file referenced in `docs/master/qa/` test plans exists under the `source.tests` paths.
+   - Every documented test command actually runs and completes.
+5. Treat any test failure as a **Critical** issue — a clean test status is required.
+
+Announce: **"Running test suite…"** then report the result in the review summary (Step 6).
+
+---
+
+## Step 5: Run Checks
 
 Execute all applicable checks:
 
@@ -92,7 +111,7 @@ Flag as **too vague** if:
 
 ---
 
-## Step 5: Generate Review Report
+## Step 6: Generate Review Report
 
 Output the full report in this format:
 
@@ -107,6 +126,7 @@ Output the full report in this format:
 - ✓ Passing: <N> files
 - ✗ Critical: <N> issues (must fix)
 - ⚠ Warnings: <N> issues (should fix)
+- Tests: ✓ all passing (<N> suites) — or — ✗ <N> failing (list below)
 
 ---
 
@@ -148,25 +168,28 @@ Output the full report in this format:
 
 ## Recommended Actions (Priority Order)
 
-1. Fix broken code references (N items)
-2. Remove code snippets (N items)
-3. Add missing code reference map entries (N items)
-4. Resolve redundancy (N items)
+1. Fix failing tests (N failing) — delegate to es-tester / es-developer
+2. Fix broken code references (N items)
+3. Remove code snippets (N items)
+4. Add missing code reference map entries (N items)
+5. Resolve redundancy (N items)
 ```
 
 ---
 
-## Step 6: Offer to Fix Issues
+## Step 7: Offer to Fix Issues
 
 After presenting the report, ask:
 > "Would you like me to auto-fix any of these issues? Options:
 > 1. Fix all Critical issues automatically
-> 2. Fix broken code references only
-> 3. Fix code snippets only
-> 4. Show me each issue and I'll decide
-> 5. No — I'll fix manually"
+> 2. Fix failing tests (delegate to es-tester / es-developer)
+> 3. Fix broken code references only
+> 4. Fix code snippets only
+> 5. Show me each issue and I'll decide
+> 6. No — I'll fix manually"
 
 If the user chooses auto-fix:
+- For failing tests: delegate to **es-tester** (diagnose) and **es-developer** (fix source), then re-run the full suite until clean
 - For broken code references: search workspace for the symbol to find correct file, update the map
 - For code snippets in docs: remove the code block and replace with a source file reference
 - For missing Code Reference Map entries: search workspace for the function, add map entry
@@ -175,7 +198,9 @@ If the user chooses auto-fix:
 
 ## Guardrails
 - Always load es-change-lifecycle skill before running checks
-- Never modify source code during a review — only docs are changed
+- Run the full test suite in Step 4 — never skip it or assume a clean status
+- A clean test status is required before declaring the review complete
+- During doc review, only docs are changed; test fixes may require source changes — confirm with the user and delegate to es-tester / es-developer
 - Report all issues found — don't silently skip
 - When fixing broken code references, search the workspace to find the correct current location
 - If a symbol genuinely no longer exists, remove it from the Code Reference Map (don't guess a new location)
