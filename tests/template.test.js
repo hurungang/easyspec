@@ -35,6 +35,7 @@ const PROMPTS = [
 const TOOL_EXT = {
   copilot: { agentExt: ".agent.md", promptExt: ".prompt.md", promptTmpl: "_template.prompt.md", agentTmpl: "_template.agent.md" },
   opencode: { agentExt: ".md", promptExt: ".md", promptTmpl: "_template.md", agentTmpl: "_template.md" },
+  "claude-code": { agentExt: ".md", promptExt: ".md", promptTmpl: "_template.md", agentTmpl: "_template.md" },
 };
 
 function readFile(...segments) {
@@ -307,16 +308,16 @@ describe("CLI e2e", () => {
     setupTmp();
     const output = runCli("init --scope project --agent copilot --dry-run --no-model-prompt");
     assert.ok(output.includes("copied=16"), "should copy 16 files (7 agents + 8 prompts + 1 skill)");
-    assert.ok(output.includes("agent target: copilot"));
-    assert.ok(output.includes("template profile: copilot"));
+    assert.ok(output.includes("agent target(s): copilot"));
+    assert.ok(output.includes("install scope: project"));
   });
 
   it("opencode dry-run install succeeds and reports correct counts", () => {
     setupTmp();
     const output = runCli("init --scope project --agent opencode --dry-run --no-model-prompt");
     assert.ok(output.includes("copied=16"), "should copy 16 files");
-    assert.ok(output.includes("agent target: opencode"));
-    assert.ok(output.includes("template profile: opencode"));
+    assert.ok(output.includes("agent target(s): opencode"));
+    assert.ok(output.includes("install scope: project"));
   });
 
   it("opencode installed agents have no model or tools fields", () => {
@@ -339,7 +340,7 @@ describe("CLI e2e", () => {
     runCli("init --scope project --agent copilot --force --no-model-prompt 2>/dev/null");
 
     for (const agent of AGENTS) {
-      const filePath = path.join(tmpDir, ".copilot", "agents", `${agent}${TOOL_EXT.copilot.agentExt}`);
+      const filePath = path.join(tmpDir, ".github", "agents", `${agent}${TOOL_EXT.copilot.agentExt}`);
       assert.ok(fs.existsSync(filePath), `missing ${agent}${TOOL_EXT.copilot.agentExt}`);
       const content = readFile(filePath);
       assert.ok(content.includes("model:"), `${agent}: should have model field`);
@@ -352,7 +353,7 @@ describe("CLI e2e", () => {
     runCli("init --scope project --agent copilot --force 2>/dev/null");
 
     for (const agent of AGENTS) {
-      const filePath = path.join(tmpDir, ".copilot", "agents", `${agent}${TOOL_EXT.copilot.agentExt}`);
+      const filePath = path.join(tmpDir, ".github", "agents", `${agent}${TOOL_EXT.copilot.agentExt}`);
       const content = readFile(filePath);
       assert.ok(
         content.includes("model: Auto (copilot)"),
@@ -382,12 +383,35 @@ describe("CLI e2e", () => {
     runCli("init --scope project --agent opencode --force --no-model-prompt 2>/dev/null");
 
     for (const agent of AGENTS) {
-      const cBody = readFile(path.join(tmpDir, ".copilot", "agents", `${agent}${TOOL_EXT.copilot.agentExt}`))
+      const cBody = readFile(path.join(tmpDir, ".github", "agents", `${agent}${TOOL_EXT.copilot.agentExt}`))
         .replace(/^---[\s\S]*?---\n?/m, "");
       const oBody = readFile(path.join(tmpDir, ".opencode", "agents", `${agent}${TOOL_EXT.opencode.agentExt}`))
         .replace(/^---[\s\S]*?---\n?/m, "");
       assert.strictEqual(cBody, oBody, `${agent}: body content differs between tools`);
     }
+  });
+
+  it("claude-code installs commands (not prompts) and .md agents", () => {
+    setupTmp();
+    runCli("init --scope project --agent claude-code --force --no-model-prompt 2>/dev/null");
+
+    for (const agent of AGENTS) {
+      const filePath = path.join(tmpDir, ".claude", "agents", `${agent}${TOOL_EXT["claude-code"].agentExt}`);
+      assert.ok(fs.existsSync(filePath), `missing agent ${agent}`);
+    }
+    for (const prompt of PROMPTS) {
+      const cmdPath = path.join(tmpDir, ".claude", "commands", `${prompt}${TOOL_EXT["claude-code"].promptExt}`);
+      assert.ok(fs.existsSync(cmdPath), `missing command ${prompt}`);
+    }
+    assert.ok(fs.existsSync(path.join(tmpDir, ".claude", "skills", "es-change-lifecycle", "SKILL.md")), "missing skill");
+    assert.ok(!fs.existsSync(path.join(tmpDir, ".claude", "prompts")), "should not install a prompts folder for claude-code");
+  });
+
+  it("installs multiple agents in a single run", () => {
+    setupTmp();
+    const output = runCli("init --scope project --agent copilot,claude-code --dry-run --no-model-prompt");
+    assert.ok(output.includes("agent target(s): copilot, claude-code"));
+    assert.ok(output.includes("copied=16"));
   });
 
   it("help command runs without error", () => {

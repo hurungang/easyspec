@@ -2,67 +2,47 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
-import { createInterface } from "node:readline/promises";
-import { stdin as input, stdout as output } from "node:process";
+import { multiselect, select, isCancel } from "@clack/prompts";
 
-const SUPPORTED_IDES = ["vscode", "vscode-insiders", "cursor", "windsurf"];
-const SUPPORTED_AGENTS = ["copilot", "opencode", "cursor", "windsurf", "claude-code", "claude", "codex"];
+const SUPPORTED_AGENTS = ["copilot", "opencode", "claude-code"];
 
 const TOOL_PROFILES = {
   copilot: {
-    configDir: ".copilot",
+    label: "GitHub Copilot (VS Code)",
+    projectDir: ".github",
+    homeDir: ".copilot",
+    agentDir: "agents",
+    promptDir: "prompts",
+    homePrompts: false,
+    skillDir: "skills",
     agentExt: ".agent.md",
     promptExt: ".prompt.md",
-    skillDir: ".github/skills",
+    templateProfile: "copilot",
   },
   opencode: {
-    configDir: ".opencode",
-    homeConfigDir: ".config/opencode",
+    label: "OpenCode",
+    projectDir: ".opencode",
+    homeDir: ".config/opencode",
+    agentDir: "agents",
+    promptDir: "commands",
+    homePrompts: true,
+    skillDir: "skills",
     agentExt: ".md",
     promptExt: ".md",
-    commandDir: "commands",
-    skillDir: "skills",
-  },
-  cursor: {
-    configDir: ".cursor",
-    agentExt: ".agent.md",
-    promptExt: ".prompt.md",
-    skillDir: ".cursor/skills",
-  },
-  windsurf: {
-    configDir: ".windsurf",
-    agentExt: ".agent.md",
-    promptExt: ".prompt.md",
-    skillDir: ".windsurf/skills",
+    templateProfile: "opencode",
   },
   "claude-code": {
-    configDir: ".claude",
-    agentExt: ".agent.md",
-    promptExt: ".prompt.md",
-    skillDir: ".claude/skills",
+    label: "Claude Code",
+    projectDir: ".claude",
+    homeDir: ".claude",
+    agentDir: "agents",
+    promptDir: "commands",
+    homePrompts: true,
+    skillDir: "skills",
+    agentExt: ".md",
+    promptExt: ".md",
+    templateProfile: "opencode",
   },
-  claude: {
-    configDir: ".claude",
-    agentExt: ".agent.md",
-    promptExt: ".prompt.md",
-    skillDir: ".claude/skills",
-  },
-  codex: {
-    configDir: ".codex",
-    agentExt: ".agent.md",
-    promptExt: ".prompt.md",
-    skillDir: ".codex/skills",
-  },
-};
-
-const TEMPLATE_PROFILE_BY_AGENT = {
-  copilot: "copilot",
-  opencode: "opencode",
-  cursor: "copilot",
-  windsurf: "copilot",
-  "claude-code": "opencode",
-  claude: "opencode",
-  codex: "copilot",
 };
 
 const TECHNICAL_AGENT_NAMES = new Set(["es-architect", "es-database-designer", "es-developer", "es-tester"]);
@@ -112,15 +92,13 @@ Usage:
   easyspec-init --help
 
 Options:
-  --agent <copilot|opencode|cursor|windsurf|claude-code|claude|codex>
-                                  Coding agent target (prompts interactively if omitted)
+  --agent <copilot,opencode,claude-code>
+                                  Coding agent(s) to install (comma-separated;
+                                  prompts interactively if omitted)
   --scope <project|global>        Install scope (prompts interactively if omitted)
-  --ide <auto|vscode|vscode-insiders|cursor|windsurf>
-                                  IDE target for user-level install (default: auto)
   --workspace <path>              Project folder for --scope project (default: cwd)
   --force                         Overwrite existing files
   --dry-run                       Show what would be copied
-  --no-ide-user-sync              For global install, skip IDE user folder sync
   --source-prompts <path>         Source prompt directory for sync command
   --source-agents <path>          Source agent directory for sync command
   --template-profile <name>       Template profile to refresh (default: copilot)
@@ -133,11 +111,10 @@ Options:
 
 Examples:
   easyspec init
-  easyspec init --scope project --agent copilot
-  easyspec init --scope project --agent opencode
-  easyspec init --scope global --agent cursor --ide cursor
+  easyspec init --agent copilot --scope project
+  easyspec init --agent copilot,claude-code --scope project
+  easyspec init --agent opencode --scope global
   easyspec init --scope project --model-preset balanced
-  easyspec init --scope project --tech-model "GPT-5 (copilot)" --non-tech-model "Claude Sonnet 4.5 (copilot)"
   easyspec sync --template-profile core
 `);
 }
@@ -145,13 +122,11 @@ Examples:
 function parseArgs(argv) {
   const args = {
     command: null,
-    agent: "copilot",
+    agents: null,
     scope: "project",
-    ide: "auto",
     workspace: process.cwd(),
     force: false,
     dryRun: false,
-    ideUserSync: true,
     sourcePrompts: defaultPromptSourcePath(),
     sourceAgents: defaultAgentSourcePath(),
     templateProfile: "core",
@@ -160,7 +135,7 @@ function parseArgs(argv) {
     nonTechModel: null,
     modelPreset: null,
     modelPrompt: true,
-    agentExplicit: false,
+    agentsExplicit: false,
     scopeExplicit: false,
     help: false,
   };
@@ -185,18 +160,17 @@ function parseArgs(argv) {
       args.force = true;
     } else if (token === "--dry-run") {
       args.dryRun = true;
-    } else if (token === "--no-ide-user-sync") {
-      args.ideUserSync = false;
     } else if (token === "--scope") {
       args.scope = argv[i + 1];
       args.scopeExplicit = true;
       i += 1;
     } else if (token === "--agent") {
-      args.agent = argv[i + 1];
-      args.agentExplicit = true;
-      i += 1;
-    } else if (token === "--ide") {
-      args.ide = argv[i + 1];
+      const values = argv[i + 1]
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean);
+      args.agents = args.agents ? args.agents.concat(values) : values;
+      args.agentsExplicit = true;
       i += 1;
     } else if (token === "--workspace") {
       args.workspace = path.resolve(argv[i + 1]);
@@ -235,86 +209,20 @@ function parseArgs(argv) {
   return args;
 }
 
-function getIdeUserPath(ide) {
-  const platform = process.platform;
-  if (platform === "win32") {
-    const appData = process.env.APPDATA;
-    if (!appData) {
-      return null;
-    }
-    const map = {
-      vscode: path.join(appData, "Code", "User"),
-      "vscode-insiders": path.join(appData, "Code - Insiders", "User"),
-      cursor: path.join(appData, "Cursor", "User"),
-      windsurf: path.join(appData, "Windsurf", "User"),
-    };
-    return map[ide] || null;
-  }
-
-  if (platform === "darwin") {
-    const base = path.join(os.homedir(), "Library", "Application Support");
-    const map = {
-      vscode: path.join(base, "Code", "User"),
-      "vscode-insiders": path.join(base, "Code - Insiders", "User"),
-      cursor: path.join(base, "Cursor", "User"),
-      windsurf: path.join(base, "Windsurf", "User"),
-    };
-    return map[ide] || null;
-  }
-
-  const base = path.join(os.homedir(), ".config");
-  const map = {
-    vscode: path.join(base, "Code", "User"),
-    "vscode-insiders": path.join(base, "Code - Insiders", "User"),
-    cursor: path.join(base, "Cursor", "User"),
-    windsurf: path.join(base, "Windsurf", "User"),
-  };
-  return map[ide] || null;
-}
-
-function detectIde(preferred) {
-  if (preferred && preferred !== "auto") {
-    if (!SUPPORTED_IDES.includes(preferred)) {
-      throw new Error(`Unsupported IDE '${preferred}'.`);
-    }
-    return preferred;
-  }
-
-  for (const ide of SUPPORTED_IDES) {
-    const idePath = getIdeUserPath(ide);
-    if (idePath && fs.existsSync(idePath)) {
-      return ide;
-    }
-  }
-  return null;
-}
-
-function getAgentRootInWorkspace(agent, workspace) {
+function getProjectRoot(agent, workspace) {
   const profile = TOOL_PROFILES[agent];
   if (!profile) {
     throw new Error(`Unsupported agent '${agent}'.`);
   }
-  return path.resolve(workspace, profile.configDir);
+  return path.resolve(workspace, profile.projectDir);
 }
 
-function getAgentRootInHome(agent) {
+function getHomeRoot(agent) {
   const profile = TOOL_PROFILES[agent];
   if (!profile) {
     throw new Error(`Unsupported agent '${agent}'.`);
   }
-  const dir = profile.homeConfigDir || profile.configDir;
-  return path.join(os.homedir(), dir);
-}
-
-function getSkillRoot(rootPath, agent) {
-  const profile = TOOL_PROFILES[agent];
-  if (!profile) {
-    throw new Error(`Unsupported agent '${agent}'.`);
-  }
-  if (profile.skillDir.startsWith(".")) {
-    return path.resolve(path.dirname(rootPath), profile.skillDir);
-  }
-  return path.resolve(rootPath, profile.skillDir);
+  return path.join(os.homedir(), profile.homeDir);
 }
 
 function ensureDir(dirPath, dryRun) {
@@ -559,13 +467,12 @@ function renderDirectoryContents(templateDir, destDir, contentDir, options) {
   return summary;
 }
 
-function installToRoot(rootPath, sourceRoot, contentRoot, agent, options, skipSkills) {
+function installToRoot(rootPath, sourceRoot, contentRoot, agent, options, skipPrompts) {
   const profile = TOOL_PROFILES[agent];
   const promptsSrc = path.join(sourceRoot, "prompts");
   const agentsSrc = path.join(sourceRoot, "agents");
-  const commandDir = profile.commandDir || "prompts";
-  const promptsDest = path.join(rootPath, commandDir);
-  const agentsDest = path.join(rootPath, "agents");
+  const promptsDest = path.join(rootPath, profile.promptDir);
+  const agentsDest = path.join(rootPath, profile.agentDir);
 
   const summary = {
     copied: 0,
@@ -573,27 +480,28 @@ function installToRoot(rootPath, sourceRoot, contentRoot, agent, options, skipSk
     skipped: 0,
   };
 
-  mergeSummary(summary, renderEntitiesFromContent(promptsSrc, promptsDest, contentRoot, "prompts", profile.promptExt, options));
+  if (!skipPrompts) {
+    mergeSummary(summary, renderEntitiesFromContent(promptsSrc, promptsDest, contentRoot, "prompts", profile.promptExt, options));
+  }
   mergeSummary(summary, renderEntitiesFromContent(agentsSrc, agentsDest, contentRoot, "agents", profile.agentExt, options));
 
-  if (!skipSkills) {
-    const contentSkillsDir = path.join(contentRoot, "skills");
-    const skillDest = getSkillRoot(rootPath, agent);
-    mergeSummary(summary, copySkillDirectory(contentSkillsDir, skillDest, contentRoot, options));
-  }
+  const contentSkillsDir = path.join(contentRoot, "skills");
+  const skillDest = path.join(rootPath, profile.skillDir);
+  mergeSummary(summary, copySkillDirectory(contentSkillsDir, skillDest, contentRoot, options));
 
   return {
     rootPath,
+    agent,
     ...summary,
   };
 }
 
 function resolveSourceRoot(baseTemplatesDir, agent) {
-  const profile = TEMPLATE_PROFILE_BY_AGENT[agent];
-  if (!profile) {
+  const profile = TOOL_PROFILES[agent];
+  if (!profile || !profile.templateProfile) {
     throw new Error(`No template profile mapped for agent '${agent}'.`);
   }
-  return path.join(baseTemplatesDir, profile);
+  return path.join(baseTemplatesDir, profile.templateProfile);
 }
 
 function resolveContentRoot(baseTemplatesDir) {
@@ -740,52 +648,38 @@ function applyModelSelectionsToRoot(rootPath, selection, dryRun) {
   return summary;
 }
 
-const AGENT_LABELS = {
-  copilot: "GitHub Copilot (VS Code)",
-  opencode: "OpenCode",
-  cursor: "Cursor",
-  windsurf: "Windsurf",
-  "claude-code": "Claude Code",
-  claude: "Claude",
-  codex: "Codex",
-};
+async function promptForAgents() {
+  const selected = await multiselect({
+    message: "Select target harness(es) — space to toggle, enter to confirm:",
+    options: SUPPORTED_AGENTS.map((agent) => ({
+      value: agent,
+      label: TOOL_PROFILES[agent].label,
+    })),
+    required: true,
+    initialValues: ["copilot"],
+  });
 
-async function promptForAgent() {
-  const rl = createInterface({ input, output });
-  try {
-    console.log("[easyspec-init] select target harness (coding agent):");
-    SUPPORTED_AGENTS.forEach((agent, idx) => {
-      console.log(`  ${idx + 1}. ${agent}${AGENT_LABELS[agent] ? ` (${AGENT_LABELS[agent]})` : ""}`);
-    });
-    const choiceRaw = await rl.question(`[easyspec-init] Enter choice 1-${SUPPORTED_AGENTS.length} (default: copilot): `);
-    const normalized = choiceRaw.trim() === "" ? "1" : choiceRaw;
-    const choice = Number.parseInt(normalized, 10);
-    if (Number.isNaN(choice) || choice < 1 || choice > SUPPORTED_AGENTS.length) {
-      throw new Error("Invalid harness selection.");
-    }
-    return SUPPORTED_AGENTS[choice - 1];
-  } finally {
-    rl.close();
+  if (isCancel(selected)) {
+    throw new Error("Harness selection cancelled.");
   }
+
+  return selected;
 }
 
-async function promptForScope(agent, workspace) {
-  const rl = createInterface({ input, output });
-  try {
-    const projectPath = getAgentRootInWorkspace(agent, workspace);
-    const globalPath = getAgentRootInHome(agent);
-    console.log("[easyspec-init] select install scope (level):");
-    console.log(`  1. project — install into current project (${projectPath})`);
-    console.log(`  2. global  — install into your user profile (${globalPath})`);
-    const choiceRaw = await rl.question("[easyspec-init] Enter choice 1-2 (default: project): ");
-    const normalized = choiceRaw.trim() === "" ? "1" : choiceRaw;
-    const choice = Number.parseInt(normalized, 10);
-    if (choice === 1) return "project";
-    if (choice === 2) return "global";
-    throw new Error("Invalid scope selection.");
-  } finally {
-    rl.close();
+async function promptForScope(agents) {
+  const scope = await select({
+    message: `Select install scope for ${agents.join(", ")}:`,
+    options: [
+      { value: "project", label: "project — install into the current project" },
+      { value: "global", label: "global — install into your user profile" },
+    ],
+  });
+
+  if (isCancel(scope)) {
+    throw new Error("Scope selection cancelled.");
   }
+
+  return scope;
 }
 
 function resolveModelSelection(args) {
@@ -837,36 +731,31 @@ export async function runCli(argv) {
     throw new Error(`Unknown command '${args.command}'. Supported: init, sync.`);
   }
 
-  if (process.stdin.isTTY) {
-    if (!args.agentExplicit) {
-      args.agent = await promptForAgent();
+  let agents = args.agents;
+  if (process.stdin.isTTY && !args.agentsExplicit) {
+    agents = await promptForAgents();
+  }
+  if (!agents || agents.length === 0) {
+    agents = ["copilot"];
+  }
+
+  for (const agent of agents) {
+    if (!SUPPORTED_AGENTS.includes(agent)) {
+      throw new Error(`Unsupported --agent value '${agent}'. Currently supported: ${SUPPORTED_AGENTS.join(", ")}.`);
     }
-    if (!args.scopeExplicit) {
-      args.scope = await promptForScope(args.agent, args.workspace);
-    }
   }
 
-  if (!["project", "global"].includes(args.scope)) {
-    throw new Error(`Invalid --scope value '${args.scope}'. Use project or global.`);
+  let scope = args.scope;
+  if (process.stdin.isTTY && !args.scopeExplicit) {
+    scope = await promptForScope(agents);
   }
-
-  if (!SUPPORTED_AGENTS.includes(args.agent)) {
-    throw new Error(`Unsupported --agent value '${args.agent}'. Currently supported: ${SUPPORTED_AGENTS.join(", ")}.`);
-  }
-
-  const sourceRoot = resolveSourceRoot(templatesDir, args.agent);
-  if (!fs.existsSync(sourceRoot)) {
-    throw new Error(`Template directory not found: ${sourceRoot}`);
+  if (!["project", "global"].includes(scope)) {
+    throw new Error(`Invalid --scope value '${scope}'. Use project or global.`);
   }
 
   const contentRoot = resolveContentRoot(templatesDir);
   if (!fs.existsSync(contentRoot)) {
     throw new Error(`Content directory not found: ${contentRoot}`);
-  }
-
-  const ide = detectIde(args.ide);
-  if (args.ide !== "auto" && !ide) {
-    throw new Error(`Could not resolve IDE path for '${args.ide}'.`);
   }
 
   const options = {
@@ -878,29 +767,24 @@ export async function runCli(argv) {
 
   const installReports = [];
 
-  if (args.scope === "project") {
-    const projectRoot = getAgentRootInWorkspace(args.agent, args.workspace);
-    installReports.push(installToRoot(projectRoot, sourceRoot, contentRoot, args.agent, options));
-  } else {
-    const userAgentRoot = getAgentRootInHome(args.agent);
-    installReports.push(installToRoot(userAgentRoot, sourceRoot, contentRoot, args.agent, options));
+  for (const agent of agents) {
+    const profile = TOOL_PROFILES[agent];
+    const sourceRoot = resolveSourceRoot(templatesDir, agent);
+    if (!fs.existsSync(sourceRoot)) {
+      throw new Error(`Template directory not found: ${sourceRoot}`);
+    }
 
-    if (args.ideUserSync && ["copilot", "cursor", "windsurf"].includes(args.agent)) {
-      const resolvedIde = ide || detectIde("auto");
-      if (resolvedIde) {
-        const ideUserRoot = getIdeUserPath(resolvedIde);
-        if (ideUserRoot) {
-          installReports.push(installToRoot(ideUserRoot, sourceRoot, contentRoot, args.agent, options, true));
-        }
-      } else {
-        console.warn("[easyspec-init] No supported IDE user folder detected. Skipping IDE user sync.");
-      }
+    if (scope === "project") {
+      const projectRoot = getProjectRoot(agent, args.workspace);
+      installReports.push(installToRoot(projectRoot, sourceRoot, contentRoot, agent, options, false));
+    } else {
+      const homeRoot = getHomeRoot(agent);
+      installReports.push(installToRoot(homeRoot, sourceRoot, contentRoot, agent, options, !profile.homePrompts));
     }
   }
 
-  console.log(`[easyspec-init] agent target: ${args.agent}`);
-  console.log(`[easyspec-init] template profile: ${TEMPLATE_PROFILE_BY_AGENT[args.agent]}`);
-  console.log(`[easyspec-init] IDE target: ${ide || "not-detected"}`);
+  console.log(`[easyspec-init] agent target(s): ${agents.join(", ")}`);
+  console.log(`[easyspec-init] install scope: ${scope}`);
   const agentDirs = new Set();
   for (const report of installReports) {
     console.log(`[easyspec-init] ${args.dryRun ? "would update" : "updated"}: ${report.rootPath}`);

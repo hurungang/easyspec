@@ -1,6 +1,6 @@
 {
   "name": "@myaider/easyspec",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Shareable easyspec prompts, custom agent definitions, and skills with an init CLI for copilot, opencode, claude-code, and other agentic coding tools.",
   "type": "module",
   "bin": {
@@ -25,17 +25,14 @@
   "keywords": [
     "copilot",
     "opencode",
-    "cursor",
-    "windsurf",
     "claude-code",
-    "claude",
-    "codex",
     "prompts",
     "agents",
     "skills",
     "cli",
     "easyspec",
-    "spec-driven"
+    "spec-driven",
+    "openspec"
   ],
   "license": "MIT",
   "repository": {
@@ -45,5 +42,8 @@
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.7.0"
   }
 }
