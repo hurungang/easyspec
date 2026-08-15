@@ -89,7 +89,7 @@ easyspec init --agent opencode --dry-run
 
 ### What is installed
 
-**Commands:** `es-change-init`, `es-change-propose`, `es-change-apply`, `es-change-refinement`, `es-change-fix`, `es-change-review`, `es-change-update-master`, `es-quick-fix`
+**Commands:** `es-change-init`, `es-change-propose`, `es-change-apply`, `es-change-refinement`, `es-change-fix`, `es-master-review`, `es-change-update-master`, `es-quick-fix`
 
 **Agents:** `es-product-owner`, `es-ux-specialist`, `es-architect`, `es-database-designer`, `es-developer`, `es-tester`, `es-document-reviewer`
 

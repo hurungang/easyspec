@@ -27,7 +27,7 @@ const PROMPTS = [
   "es-change-init",
   "es-change-propose",
   "es-change-refinement",
-  "es-change-review",
+  "es-master-review",
   "es-change-update-master",
   "es-quick-fix",
 ];

@@ -294,7 +294,7 @@ If yes, perform a **move** (copy then delete original) using these explicit step
 - [x/skipped] docs/master/reference/ — Reference docs updated
 
 ### Next Steps
-- Run `/es-change-review` to verify master docs are accurate and well-structured
+- Run `/es-master-review` to verify master docs are accurate and well-structured
 - Or archive the change if not done: move to openspec/changes/archive/
 ```
 

@@ -229,7 +229,7 @@ Run /es-change-init again anytime the project structure changes.
 
 Next steps:
 - Run /es-change-propose to start a new change
-- Run /es-change-review to audit existing master docs
+- Run /es-master-review to audit existing master docs
 ```
 
 ---

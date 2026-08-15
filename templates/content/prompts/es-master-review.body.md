@@ -1,17 +1,17 @@
 ---
-name: es-change-review
-description: es-change-review command
+name: es-master-review
+description: Audit canonical master product docs for quality, accuracy, and freshness
 ---
 
 Review master product docs under `docs/` for quality, accuracy, and freshness.
 
-**Input**: Optionally specify scope (e.g., `/es-change-review tech` or `/es-change-review all`). Valid scopes: `all`, `product`, `ux`, `architecture`, `data-model`, `tech`, `qa`, `deployment`, `operations`, `reference`. Defaults to `all` if not specified.
+**Input**: Optionally specify scope (e.g., `/es-master-review tech` or `/es-master-review all`). Valid scopes: `all`, `product`, `ux`, `architecture`, `data-model`, `tech`, `qa`, `deployment`, `operations`, `reference`. Defaults to `all` if not specified.
 
 ---
 
 ## Step 1: Load Review Skill and Project Config
 
-Read `.github/skills/es-spec-review/SKILL.md` for the full review checklist and criteria.
+Read `.github/skills/es-change-lifecycle/SKILL.md` for master doc structure conventions.
 
 Read `docs/config.yaml` for project source paths (needed to verify code references and test file paths).
 
@@ -46,7 +46,7 @@ For each folder in scope:
 
 ## Step 4: Run Checks
 
-Execute all applicable checks from the spec-review skill:
+Execute all applicable checks:
 
 ### 4a. Code Snippet Detection
 Search every doc file for:
@@ -66,7 +66,7 @@ For every Code Reference Map table in `docs/master/technology/`:
 Reverse check: Scan source directories (from `docs/config.yaml` `source.frontend` and `source.backend`) for key function/component patterns and verify they appear in the Code Reference Map.
 
 ### 4c. Structure Compliance
-For each folder, check required sections as defined in the spec-review skill:
+For each folder, check required sections as defined in the es-change-lifecycle skill:
 - Product docs: Epic Overview, Business Goals, User Stories, Acceptance Criteria, Out of Scope
 - Architecture docs: Mermaid diagrams with ≤15 nodes
 - Database docs: Mermaid erDiagram, no SQL, database-objects.md currency
@@ -174,7 +174,7 @@ If the user chooses auto-fix:
 ---
 
 ## Guardrails
-- Always load spec-review skill before running checks
+- Always load es-change-lifecycle skill before running checks
 - Never modify source code during a review — only docs are changed
 - Report all issues found — don't silently skip
 - When fixing broken code references, search the workspace to find the correct current location
