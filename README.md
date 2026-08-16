@@ -11,6 +11,16 @@ Supports **GitHub Copilot**, **OpenCode**, and **Claude Code**.
 
 > Built on the ideas of [OpenSpec](https://openspec.dev/) — the spec-driven development framework. Our spec format, agent delegation model, and change lifecycle are derived from OpenSpec's concepts. Thanks to the OpenSpec team.
 
+## Showcase
+
+**[Parthenon](https://github.com/hurungang/parthenon)** — a self-hosted enterprise AI harness — was built with easyspec, feature by feature, through the propose → apply → update-master pipeline.
+
+![Parthenon feature demo](docs/parthenon-demo.gif)
+
+The same spec-driven pipeline that keeps the code clean also keeps the UI consistent. Each screen below was prototyped by the UX agent for a *different* feature, yet every one shares the same design language:
+
+![Parthenon UI consistency](docs/ui-consistency.gif)
+
 ## Install
 
 **Recommended** — install globally:
