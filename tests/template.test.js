@@ -33,7 +33,7 @@ const PROMPTS = [
 ];
 
 const TOOL_EXT = {
-  copilot: { agentExt: ".agent.md", promptExt: ".prompt.md", promptTmpl: "_template.prompt.md", agentTmpl: "_template.agent.md" },
+  copilot: { agentExt: ".md", promptExt: ".prompt.md", promptTmpl: "_template.prompt.md", agentTmpl: "_template.agent.md" },
   opencode: { agentExt: ".md", promptExt: ".md", promptTmpl: "_template.md", agentTmpl: "_template.md" },
   "claude-code": { agentExt: ".md", promptExt: ".md", promptTmpl: "_template.md", agentTmpl: "_template.md" },
 };
@@ -69,6 +69,19 @@ function parseFrontmatter(content) {
     frontmatter[key] = value;
   }
   return { frontmatter, body };
+}
+
+// Mirror of the CLI's Copilot user-level prompt directory resolution,
+// kept in sync so tests stay platform-aware without reimplementing logic.
+function copilotUserPromptDir(homeDir) {
+  if (process.platform === "win32") {
+    const appData = process.env.APPDATA;
+    return appData ? path.join(appData, "Code", "User", "prompts") : null;
+  }
+  if (process.platform === "darwin") {
+    return path.join(homeDir, "Library", "Application Support", "Code", "User", "prompts");
+  }
+  return path.join(homeDir, ".config", "Code", "User", "prompts");
 }
 
 // ——— Template Structure Tests ———
@@ -412,6 +425,71 @@ describe("CLI e2e", () => {
     const output = runCli("init --scope project --agent copilot,claude-code --dry-run --no-model-prompt");
     assert.ok(output.includes("agent target(s): copilot, claude-code"));
     assert.ok(output.includes("copied=16"));
+  });
+
+  it("copilot project installs agents as .md (not .agent.md)", () => {
+    setupTmp();
+    runCli("init --scope project --agent copilot --force --no-model-prompt 2>/dev/null");
+
+    const agentsDir = path.join(tmpDir, ".github", "agents");
+    for (const agent of AGENTS) {
+      assert.ok(fs.existsSync(path.join(agentsDir, `${agent}.md`)), `missing ${agent}.md`);
+      assert.ok(!fs.existsSync(path.join(agentsDir, `${agent}.agent.md`)), `${agent}.agent.md should not exist`);
+    }
+    const stale = fs.readdirSync(agentsDir).filter((f) => f.endsWith(".agent.md"));
+    assert.strictEqual(stale.length, 0, "no .agent.md files should be installed for copilot");
+
+    for (const prompt of PROMPTS) {
+      assert.ok(fs.existsSync(path.join(tmpDir, ".github", "prompts", `${prompt}.prompt.md`)), `missing ${prompt}.prompt.md`);
+    }
+  });
+
+  it("copilot global installs prompts to VS Code user dir and agents/skills under ~/.copilot", { skip: process.platform === "win32" }, () => {
+    setupTmp();
+    const fakeHome = path.join(rootDir, "tests", ".fakehome");
+    runCli("init --scope global --agent copilot --force --no-model-prompt 2>/dev/null");
+
+    const promptDir = copilotUserPromptDir(fakeHome);
+    assert.ok(promptDir, "unable to resolve copilot user prompt dir");
+    for (const prompt of PROMPTS) {
+      assert.ok(fs.existsSync(path.join(promptDir, `${prompt}.prompt.md`)), `missing global prompt ${prompt}.prompt.md`);
+    }
+    for (const agent of AGENTS) {
+      assert.ok(fs.existsSync(path.join(fakeHome, ".copilot", "agents", `${agent}.md`)), `missing global agent ${agent}.md`);
+    }
+    assert.ok(fs.existsSync(path.join(fakeHome, ".copilot", "skills", "es-change-lifecycle", "SKILL.md")), "missing global skill");
+    assert.ok(!fs.existsSync(path.join(fakeHome, ".copilot", "prompts")), "copilot prompts should not go under ~/.copilot");
+  });
+
+  it("opencode global installs commands, agents, skills under ~/.config/opencode", { skip: process.platform === "win32" }, () => {
+    setupTmp();
+    const fakeHome = path.join(rootDir, "tests", ".fakehome");
+    runCli("init --scope global --agent opencode --force --no-model-prompt 2>/dev/null");
+
+    const root = path.join(fakeHome, ".config", "opencode");
+    for (const prompt of PROMPTS) {
+      assert.ok(fs.existsSync(path.join(root, "commands", `${prompt}.md`)), `missing global command ${prompt}.md`);
+    }
+    for (const agent of AGENTS) {
+      assert.ok(fs.existsSync(path.join(root, "agents", `${agent}.md`)), `missing global agent ${agent}.md`);
+    }
+    assert.ok(fs.existsSync(path.join(root, "skills", "es-change-lifecycle", "SKILL.md")), "missing global skill");
+  });
+
+  it("claude-code global installs commands, agents, skills under ~/.claude", { skip: process.platform === "win32" }, () => {
+    setupTmp();
+    const fakeHome = path.join(rootDir, "tests", ".fakehome");
+    runCli("init --scope global --agent claude-code --force --no-model-prompt 2>/dev/null");
+
+    const root = path.join(fakeHome, ".claude");
+    for (const prompt of PROMPTS) {
+      assert.ok(fs.existsSync(path.join(root, "commands", `${prompt}.md`)), `missing global command ${prompt}.md`);
+    }
+    for (const agent of AGENTS) {
+      assert.ok(fs.existsSync(path.join(root, "agents", `${agent}.md`)), `missing global agent ${agent}.md`);
+    }
+    assert.ok(fs.existsSync(path.join(root, "skills", "es-change-lifecycle", "SKILL.md")), "missing global skill");
+    assert.ok(!fs.existsSync(path.join(root, "prompts")), "claude-code should not create a prompts folder");
   });
 
   it("help command runs without error", () => {

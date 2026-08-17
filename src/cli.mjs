@@ -13,9 +13,8 @@ const TOOL_PROFILES = {
     homeDir: ".copilot",
     agentDir: "agents",
     promptDir: "prompts",
-    homePrompts: false,
     skillDir: "skills",
-    agentExt: ".agent.md",
+    agentExt: ".md",
     promptExt: ".prompt.md",
     templateProfile: "copilot",
   },
@@ -25,7 +24,6 @@ const TOOL_PROFILES = {
     homeDir: ".config/opencode",
     agentDir: "agents",
     promptDir: "commands",
-    homePrompts: true,
     skillDir: "skills",
     agentExt: ".md",
     promptExt: ".md",
@@ -37,7 +35,6 @@ const TOOL_PROFILES = {
     homeDir: ".claude",
     agentDir: "agents",
     promptDir: "commands",
-    homePrompts: true,
     skillDir: "skills",
     agentExt: ".md",
     promptExt: ".md",
@@ -61,20 +58,24 @@ const MODEL_PRESETS = {
   },
 };
 
-function defaultPromptSourcePath() {
+function copilotUserPromptDir() {
   if (process.platform === "win32") {
     const appData = process.env.APPDATA;
     if (!appData) {
       return null;
     }
-    return path.join(appData, "Code - Insiders", "User", "prompts");
+    return path.join(appData, "Code", "User", "prompts");
   }
 
   if (process.platform === "darwin") {
-    return path.join(os.homedir(), "Library", "Application Support", "Code - Insiders", "User", "prompts");
+    return path.join(os.homedir(), "Library", "Application Support", "Code", "User", "prompts");
   }
 
-  return path.join(os.homedir(), ".config", "Code - Insiders", "User", "prompts");
+  return path.join(os.homedir(), ".config", "Code", "User", "prompts");
+}
+
+function defaultPromptSourcePath() {
+  return copilotUserPromptDir();
 }
 
 function defaultAgentSourcePath() {
@@ -223,6 +224,14 @@ function getHomeRoot(agent) {
     throw new Error(`Unsupported agent '${agent}'.`);
   }
   return path.join(os.homedir(), profile.homeDir);
+}
+
+function resolveGlobalPromptDir(agent, homeRoot) {
+  if (agent === "copilot") {
+    return copilotUserPromptDir();
+  }
+  const profile = TOOL_PROFILES[agent];
+  return path.join(homeRoot, profile.promptDir);
 }
 
 function ensureDir(dirPath, dryRun) {
@@ -467,12 +476,12 @@ function renderDirectoryContents(templateDir, destDir, contentDir, options) {
   return summary;
 }
 
-function installToRoot(rootPath, sourceRoot, contentRoot, agent, options, skipPrompts) {
+function installToRoot(rootPath, promptsDest, sourceRoot, contentRoot, agent, options) {
   const profile = TOOL_PROFILES[agent];
   const promptsSrc = path.join(sourceRoot, "prompts");
   const agentsSrc = path.join(sourceRoot, "agents");
-  const promptsDest = path.join(rootPath, profile.promptDir);
   const agentsDest = path.join(rootPath, profile.agentDir);
+  const skillsDest = path.join(rootPath, profile.skillDir);
 
   const summary = {
     copied: 0,
@@ -480,17 +489,17 @@ function installToRoot(rootPath, sourceRoot, contentRoot, agent, options, skipPr
     skipped: 0,
   };
 
-  if (!skipPrompts) {
+  if (promptsDest) {
     mergeSummary(summary, renderEntitiesFromContent(promptsSrc, promptsDest, contentRoot, "prompts", profile.promptExt, options));
   }
   mergeSummary(summary, renderEntitiesFromContent(agentsSrc, agentsDest, contentRoot, "agents", profile.agentExt, options));
 
   const contentSkillsDir = path.join(contentRoot, "skills");
-  const skillDest = path.join(rootPath, profile.skillDir);
-  mergeSummary(summary, copySkillDirectory(contentSkillsDir, skillDest, contentRoot, options));
+  mergeSummary(summary, copySkillDirectory(contentSkillsDir, skillsDest, contentRoot, options));
 
   return {
     rootPath,
+    promptsDest,
     agent,
     ...summary,
   };
@@ -562,12 +571,12 @@ function syncTemplates(args, templatesDir, dryRun, force) {
   }
 
   for (const agentName of agentNames) {
-    const srcAgentFile = path.join(args.sourceAgents, `${agentName}.agent.md`);
+    const srcAgentFile = path.join(args.sourceAgents, `${agentName}.md`);
     if (!fs.existsSync(srcAgentFile)) {
       summary.agents.missing.push(agentName);
       continue;
     }
-    const destAgentFile = path.join(agentDestDir, `${agentName}.agent.md`);
+    const destAgentFile = path.join(agentDestDir, `${agentName}.md`);
     const result = copyFileWithPolicy(srcAgentFile, destAgentFile, { force, dryRun });
     summary.agents[result] += 1;
   }
@@ -586,7 +595,7 @@ function syncTemplates(args, templatesDir, dryRun, force) {
 }
 
 function chooseModelKind(agentFileName) {
-  const bare = agentFileName.replace(/\.agent\.md$/i, "");
+  const bare = agentFileName.replace(/(?:\.agent)?\.md$/i, "");
   return TECHNICAL_AGENT_NAMES.has(bare) ? "technical" : "non-technical";
 }
 
@@ -622,7 +631,7 @@ function applyModelSelectionsToRoot(rootPath, selection, dryRun) {
     return summary;
   }
 
-  const files = fs.readdirSync(agentsDir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".agent.md"));
+  const files = fs.readdirSync(agentsDir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith(".md"));
   for (const entry of files) {
     const modelKind = chooseModelKind(entry.name);
     const chosenModel = modelKind === "technical" ? selection.technicalModel : selection.nonTechnicalModel;
@@ -768,7 +777,6 @@ export async function runCli(argv) {
   const installReports = [];
 
   for (const agent of agents) {
-    const profile = TOOL_PROFILES[agent];
     const sourceRoot = resolveSourceRoot(templatesDir, agent);
     if (!fs.existsSync(sourceRoot)) {
       throw new Error(`Template directory not found: ${sourceRoot}`);
@@ -776,10 +784,12 @@ export async function runCli(argv) {
 
     if (scope === "project") {
       const projectRoot = getProjectRoot(agent, args.workspace);
-      installReports.push(installToRoot(projectRoot, sourceRoot, contentRoot, agent, options, false));
+      const promptsDest = path.join(projectRoot, TOOL_PROFILES[agent].promptDir);
+      installReports.push(installToRoot(projectRoot, promptsDest, sourceRoot, contentRoot, agent, options));
     } else {
       const homeRoot = getHomeRoot(agent);
-      installReports.push(installToRoot(homeRoot, sourceRoot, contentRoot, agent, options, !profile.homePrompts));
+      const promptsDest = resolveGlobalPromptDir(agent, homeRoot);
+      installReports.push(installToRoot(homeRoot, promptsDest, sourceRoot, contentRoot, agent, options));
     }
   }
 
@@ -788,6 +798,9 @@ export async function runCli(argv) {
   const agentDirs = new Set();
   for (const report of installReports) {
     console.log(`[easyspec-init] ${args.dryRun ? "would update" : "updated"}: ${report.rootPath}`);
+    if (report.promptsDest && report.promptsDest !== path.join(report.rootPath, TOOL_PROFILES[report.agent].promptDir)) {
+      console.log(`  prompts -> ${report.promptsDest}`);
+    }
     console.log(`  copied=${report.copied} overwritten=${report.overwritten} skipped=${report.skipped}`);
     agentDirs.add(path.join(report.rootPath, "agents"));
   }
@@ -804,7 +817,7 @@ export async function runCli(argv) {
   }
   console.log(`[easyspec-init] ${args.dryRun ? "would update" : "updated"} model settings in ${modelUpdates} agent file(s).`);
 
-  console.log("[easyspec-init] reminder: models default to auto — review installed *.agent.md model values if you want per-agent overrides.");
+  console.log("[easyspec-init] reminder: models default to auto — review installed *.md agent model values if you want per-agent overrides.");
   for (const agentDir of agentDirs) {
     console.log(`[easyspec-init] model settings location: ${agentDir}`);
   }

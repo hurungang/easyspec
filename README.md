@@ -67,13 +67,19 @@ Models default to **`auto`** — no need to pick one.
 
 **Project scope** (`--scope project`):
 
-| Agent | Commands | Agents | Skills |
-|-------|----------|--------|--------|
-| `copilot` | `<ws>/.github/prompts/` | `<ws>/.github/agents/` | `<ws>/.github/skills/` |
-| `opencode` | `<ws>/.opencode/commands/` | `<ws>/.opencode/agents/` | `<ws>/.opencode/skills/` |
-| `claude-code` | `<ws>/.claude/commands/` | `<ws>/.claude/agents/` | `<ws>/.claude/skills/` |
+| Agent | Commands/Prompts | Agents | Skills |
+|-------|------------------|--------|--------|
+| `copilot` | `<ws>/.github/prompts/*.prompt.md` | `<ws>/.github/agents/*.md` | `<ws>/.github/skills/<name>/SKILL.md` |
+| `opencode` | `<ws>/.opencode/commands/*.md` | `<ws>/.opencode/agents/*.md` | `<ws>/.opencode/skills/<name>/SKILL.md` |
+| `claude-code` | `<ws>/.claude/commands/*.md` | `<ws>/.claude/agents/*.md` | `<ws>/.claude/skills/<name>/SKILL.md` |
 
-**Global scope** (`--scope global`): same paths under `~/` instead of `<ws>/`. Copilot global scope installs agents and skills only (GitHub Copilot has no user-level prompt files).
+**Global scope** (`--scope global`): installed under your user profile instead of `<ws>/`.
+
+| Agent | Commands/Prompts | Agents | Skills |
+|-------|------------------|--------|--------|
+| `copilot` | `~/Library/Application Support/Code/User/prompts/` (macOS) or `%APPDATA%\Code\User\prompts\` (Windows) | `~/.copilot/agents/` | `~/.copilot/skills/` |
+| `opencode` | `~/.config/opencode/commands/` | `~/.config/opencode/agents/` | `~/.config/opencode/skills/` |
+| `claude-code` | `~/.claude/commands/` | `~/.claude/agents/` | `~/.claude/skills/` |
 
 ### Examples
 
