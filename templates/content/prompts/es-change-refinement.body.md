@@ -15,7 +15,7 @@ If a change name is provided, use it.
 
 Otherwise, list available changes:
 ```
-Get-ChildItem docs/changes/ -Directory | Where-Object { $_.Name -ne 'archive' }
+Get-ChildItem <docs-folder>/changes/ -Directory | Where-Object { $_.Name -ne 'archive' }
 ```
 
 If only one active change exists, auto-select it. If multiple, ask the user to select.
@@ -35,7 +35,7 @@ Record the adjustment as a clear statement in plain English. If the request is a
 
 ## Step 3: Audit What Has Been Done
 
-Read all existing files in `docs/changes/<name>/` to build a complete picture of the current state:
+Read all existing files in `<docs-folder>/changes/<name>/` to build a complete picture of the current state:
 
 1. `.change.yaml` — Current status and which agents have completed
 2. `prd.md` — Accepted requirements and user stories
@@ -47,7 +47,7 @@ Read all existing files in `docs/changes/<name>/` to build a complete picture of
 8. `implementation-plan.md` — Task list with `- [x]` (done) and `- [ ]` (pending) tasks
 9. `test-plan.md` — Test strategy and scenarios
 
-Also read `docs/config.yaml` for project source paths, tech stack, and conventions.
+Also read `easyspec-config.yaml` for project source paths, tech stack, and conventions.
 
 Then determine the **implementation phase**:
 
@@ -107,9 +107,9 @@ Update each affected document by re-running the relevant agent, passing both the
 Delegate to **es-product-owner agent**:
 > "The change `<name>` is being refined. Adjustment: `<adjustment>`.
 >
-> Read the current `docs/changes/<name>/prd.md` and `docs/changes/<name>/spec-change.md`. Update both to incorporate the adjustment as if it were part of the original requirements. Add, modify, or remove user stories and acceptance criteria as needed. Do not add a 'Refinement' section — integrate the changes naturally.
+> Read the current `<docs-folder>/changes/<name>/prd.md` and `<docs-folder>/changes/<name>/spec-change.md`. Update both to incorporate the adjustment as if it were part of the original requirements. Add, modify, or remove user stories and acceptance criteria as needed. Do not add a 'Refinement' section — integrate the changes naturally.
 >
-> Read `docs/config.yaml` for project context. Load `.github/skills/es-change-lifecycle/SKILL.md` for format requirements."
+> Read `easyspec-config.yaml` for project context. Load `.github/skills/es-change-lifecycle/SKILL.md` for format requirements."
 
 After update, delegate to **es-document-reviewer agent** to review both files.
 
@@ -118,7 +118,7 @@ After update, delegate to **es-document-reviewer agent** to review both files.
 Delegate to **es-ux-specialist agent**:
 > "The change `<name>` is being refined. Adjustment: `<adjustment>`.
 >
-> Read the updated `docs/changes/<name>/prd.md` for the revised user flows. Update `docs/changes/<name>/prototype/index.html` to incorporate the adjustment. The prototype must remain self-contained (inline CSS/JS) and work directly in a browser. Check `docs/master/ux/` and other change prototypes for the established product style — do not deviate from it."
+> Read the updated `<docs-folder>/changes/<name>/prd.md` for the revised user flows. Update `<docs-folder>/changes/<name>/prototype/index.html` to incorporate the adjustment. The prototype must remain self-contained (inline CSS/JS) and work directly in a browser. Check `<docs-folder>/master/ux/` and other change prototypes for the established product style — do not deviate from it."
 
 After update, delegate to **es-document-reviewer agent** to review.
 
@@ -127,7 +127,7 @@ After update, delegate to **es-document-reviewer agent** to review.
 Delegate to **es-architect agent**:
 > "The change `<name>` is being refined. Adjustment: `<adjustment>`.
 >
-> Read the updated `docs/changes/<name>/prd.md` and the current `docs/changes/<name>/architecture.md`. Update the architecture doc to incorporate the adjustment. Revise Mermaid diagrams, component descriptions, and integration notes as needed."
+> Read the updated `<docs-folder>/changes/<name>/prd.md` and the current `<docs-folder>/changes/<name>/architecture.md`. Update the architecture doc to incorporate the adjustment. Revise Mermaid diagrams, component descriptions, and integration notes as needed."
 
 After update, delegate to **es-document-reviewer agent** to review.
 
@@ -136,7 +136,7 @@ After update, delegate to **es-document-reviewer agent** to review.
 Delegate to **es-database-designer agent**:
 > "The change `<name>` is being refined. Adjustment: `<adjustment>`.
 >
-> Read the updated `docs/changes/<name>/prd.md` and the current `docs/changes/<name>/data-model.md`. Update the data model to incorporate the adjustment. Revise entities, relationships, and schema file references as needed. Data model must remain technology-agnostic."
+> Read the updated `<docs-folder>/changes/<name>/prd.md` and the current `<docs-folder>/changes/<name>/data-model.md`. Update the data model to incorporate the adjustment. Revise entities, relationships, and schema file references as needed. Data model must remain technology-agnostic."
 
 After update, delegate to **es-document-reviewer agent** to review.
 
@@ -145,11 +145,11 @@ After update, delegate to **es-document-reviewer agent** to review.
 Delegate to **es-developer agent**:
 > "The change `<name>` is being refined. Adjustment: `<adjustment>`.
 >
-> Read all updated change docs in `docs/changes/<name>/` and `docs/config.yaml`.
+> Read all updated change docs in `<docs-folder>/changes/<name>/` and `easyspec-config.yaml`.
 >
-> Update `docs/changes/<name>/tech-spec.md` to reflect the adjustment — revise the Component Breakdown, API Changes, and Code Reference Map as needed.
+> Update `<docs-folder>/changes/<name>/tech-spec.md` to reflect the adjustment — revise the Component Breakdown, API Changes, and Code Reference Map as needed.
 >
-> Update `docs/changes/<name>/implementation-plan.md`:
+> Update `<docs-folder>/changes/<name>/implementation-plan.md`:
 > - Keep all `- [x]` completed tasks as-is (do not uncheck them)
 > - Add new tasks required by the adjustment as `- [ ]` items, inserted at the appropriate phase
 > - Modify or remove pending `- [ ]` tasks that are superseded by the adjustment
@@ -163,7 +163,7 @@ Delegate to **es-developer agent**:
 Delegate to **es-tester agent**:
 > "The change `<name>` is being refined. Adjustment: `<adjustment>`.
 >
-> Read the updated `docs/changes/<name>/prd.md` and the current `docs/changes/<name>/test-plan.md`. Update the test plan to cover the adjustment — add new scenarios, modify existing ones, and remove any that are no longer relevant. Ensure every acceptance criterion in the updated PRD has a corresponding test scenario. Do not write test code — this is planning only."
+> Read the updated `<docs-folder>/changes/<name>/prd.md` and the current `<docs-folder>/changes/<name>/test-plan.md`. Update the test plan to cover the adjustment — add new scenarios, modify existing ones, and remove any that are no longer relevant. Ensure every acceptance criterion in the updated PRD has a corresponding test scenario. Do not write test code — this is planning only."
 
 ---
 
@@ -174,10 +174,10 @@ If the change is in Phase B, C, or D (code has been written), delegate to **es-d
 > "The change `<name>` has been refined with this adjustment: `<adjustment>`.
 >
 > Read the updated docs:
-> - `docs/changes/<name>/prd.md` — revised requirements
-> - `docs/changes/<name>/tech-spec.md` — updated technical approach and Code Reference Map
-> - `docs/changes/<name>/implementation-plan.md` — updated task list (look for `- [ ]` tasks and `⚠️ NEEDS REWORK` tasks)
-> - `docs/config.yaml` for source paths and conventions
+> - `<docs-folder>/changes/<name>/prd.md` — revised requirements
+> - `<docs-folder>/changes/<name>/tech-spec.md` — updated technical approach and Code Reference Map
+> - `<docs-folder>/changes/<name>/implementation-plan.md` — updated task list (look for `- [ ]` tasks and `⚠️ NEEDS REWORK` tasks)
+> - `easyspec-config.yaml` for source paths and conventions
 >
 > Work through each pending `- [ ]` task and each `⚠️ NEEDS REWORK` task in order:
 > 1. Implement or rework the task
@@ -196,9 +196,9 @@ If the change is in Phase B, C, or D, after the developer confirms implementatio
 > "The change `<name>` has been refined. Adjustment: `<adjustment>`.
 >
 > Read:
-> - `docs/changes/<name>/test-plan.md` — updated test plan
-> - `docs/changes/<name>/prd.md` — updated acceptance criteria
-> - `docs/config.yaml` for test directory paths
+> - `<docs-folder>/changes/<name>/test-plan.md` — updated test plan
+> - `<docs-folder>/changes/<name>/prd.md` — updated acceptance criteria
+> - `easyspec-config.yaml` for test directory paths
 >
 > Update tests across all three layers to reflect the adjustment:
 > 1. **Backend tests** — update/add pytest files as needed
@@ -207,7 +207,7 @@ If the change is in Phase B, C, or D, after the developer confirms implementatio
 >
 > Run all tests. Report pass/fail counts. Fix any failures before proceeding.
 >
-> When all layers pass, update `docs/changes/<name>/test-plan.md` Test File References with paths to all created or modified test files."
+> When all layers pass, update `<docs-folder>/changes/<name>/test-plan.md` Test File References with paths to all created or modified test files."
 
 ---
 
@@ -215,20 +215,20 @@ If the change is in Phase B, C, or D, after the developer confirms implementatio
 
 If the change is in Phase D (fully implemented and tested), after all tests pass, prepare demo cases **silently** (no separate announcement):
 
-**If `docs/changes/<name>/demo-cases.md` does NOT exist:**
+**If `<docs-folder>/changes/<name>/demo-cases.md` does NOT exist:**
 Delegate to **es-tester agent** to create it:
 > "The tests for `<name>` are all passing after refinement. Now curate a demo-cases file.
 >
-> Read `docs/changes/<name>/test-plan.md` and `e2e/tests/` to understand what test cases exist.
+> Read `<docs-folder>/changes/<name>/test-plan.md` and `e2e/tests/` to understand what test cases exist.
 >
 > Select **one best representative E2E test per feature** — the one that shows the most user-visible behaviour. Skip tests that only validate one small detail (e.g. 'page does not redirect to login') or tests that duplicate the same flow.
 >
-> Create `docs/changes/<name>/demo-cases.md` with this format:
+> Create `<docs-folder>/changes/<name>/demo-cases.md` with this format:
 >
 > ```markdown
 > # Demo Cases: <change-name>
 > <!-- Curated representative scenarios for product demo -->
-> <!-- Use with: /demo-app --cases docs/changes/<name>/demo-cases.md -->
+> <!-- Use with: /demo-app --cases <docs-folder>/changes/<name>/demo-cases.md -->
 >
 > ## Grep Patterns
 > <!-- One Playwright test title per line (must match the test's describe + test name exactly) -->
@@ -252,7 +252,7 @@ Delegate to **es-tester agent** to create it:
 
 **If demo-cases.md EXISTS:**
 Delegate to **es-tester agent** to update it:
-> "The refinement for `<name>` is complete and all tests pass. Review `docs/changes/<name>/demo-cases.md` to ensure it includes scenarios for any new or changed features from the adjustment: `<adjustment>`.
+> "The refinement for `<name>` is complete and all tests pass. Review `<docs-folder>/changes/<name>/demo-cases.md` to ensure it includes scenarios for any new or changed features from the adjustment: `<adjustment>`.
 >
 > Read the E2E tests in `e2e/tests/` to identify any new test scenarios. If new scenarios exist that aren't in demo-cases.md and represent distinct user-facing features, add them. If existing scenarios no longer exist or were renamed, update the grep patterns and table rows accordingly.
 >
@@ -269,7 +269,7 @@ If the change is in Phase D, **silently** check and update project utility slash
 - `demo-app.prompt.md`
 
 For each file:
-- If it **does not exist** → create it with commands tailored to this project's stack (read `docs/config.yaml`)
+- If it **does not exist** → create it with commands tailored to this project's stack (read `easyspec-config.yaml`)
 - If it **exists but may be outdated** (e.g., missing new scenarios from this refinement) → review and update relevant sections
 
 **For `demo-app.prompt.md`**: Ensure new E2E scenarios are listed in "Available scenarios" and the prompt supports `--cases <file>`.
@@ -311,7 +311,7 @@ First show this text:
 
 ## 🎬 Demo Available
 
-All tests are passing after the refinement. The demo uses curated scenarios from `docs/changes/<name>/demo-cases.md` (one representative test per feature).
+All tests are passing after the refinement. The demo uses curated scenarios from `<docs-folder>/changes/<name>/demo-cases.md` (one representative test per feature).
 ```
 
 Then use vscode_askQuestions to present options:
@@ -331,12 +331,12 @@ Then use vscode_askQuestions to present options:
 ```
 
 Based on the user's selection:
-- **"Full demo (normal speed)"** → invoke `/demo-app --cases docs/changes/<name>/demo-cases.md --speed normal`
-- **"Fast review"** → invoke `/demo-app --cases docs/changes/<name>/demo-cases.md --speed fast`
-- **"Manual control"** → invoke `/demo-app --cases docs/changes/<name>/demo-cases.md --pause`
+- **"Full demo (normal speed)"** → invoke `/demo-app --cases <docs-folder>/changes/<name>/demo-cases.md --speed normal`
+- **"Fast review"** → invoke `/demo-app --cases <docs-folder>/changes/<name>/demo-cases.md --speed fast`
+- **"Manual control"** → invoke `/demo-app --cases <docs-folder>/changes/<name>/demo-cases.md --pause`
 - **"Skip for now"** → announce: "Run `/es-change-update-master` when ready to update master product docs."
 
-If the user provides a specific scenario name as freeform input, invoke `/demo-app --cases docs/changes/<name>/demo-cases.md --filter <scenario> --speed normal`
+If the user provides a specific scenario name as freeform input, invoke `/demo-app --cases <docs-folder>/changes/<name>/demo-cases.md --filter <scenario> --speed normal`
 
 After any demo completes, remind the user:
 > "Run `/es-change-update-master` to apply changes to master product docs."

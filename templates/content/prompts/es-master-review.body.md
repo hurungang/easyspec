@@ -3,7 +3,7 @@ name: es-master-review
 description: Audit canonical master docs for quality and accuracy, and validate the codebase with a full test run
 ---
 
-Review master product docs under `docs/` for quality, accuracy, and freshness, and run the full test suite to confirm a clean status.
+Review master product docs under `<docs-folder>/master/` for quality, accuracy, and freshness, and run the full test suite to confirm a clean status.
 
 **Input**: Optionally specify scope (e.g., `/es-master-review tech` or `/es-master-review all`). Valid scopes: `all`, `product`, `ux`, `architecture`, `data-model`, `tech`, `qa`, `deployment`, `operations`, `reference`. Defaults to `all` if not specified.
 
@@ -13,23 +13,23 @@ Review master product docs under `docs/` for quality, accuracy, and freshness, a
 
 Read `.github/skills/es-change-lifecycle/SKILL.md` for master doc structure conventions.
 
-Read `docs/config.yaml` for project source paths (needed to verify code references and test file paths).
+Read `easyspec-config.yaml` for project source paths (needed to verify code references and test file paths).
 
 ---
 
 ## Step 2: Determine Scope
 
 Parse the input argument:
-- `all` → Review all `docs/master/` folders
-- `product` → `docs/master/product/` only
-- `ux` → `docs/master/ux/` only
-- `architecture` → `docs/master/architecture/` only
-- `data-model` → `docs/master/data-model/` only
-- `tech` → `docs/master/technology/` only
-- `qa` → `docs/master/qa/` only
-- `deployment` → `docs/master/deployment/` only
-- `operations` → `docs/master/operations/` only
-- `reference` → `docs/master/reference/` only
+- `all` → Review all `<docs-folder>/master/` folders
+- `product` → `<docs-folder>/master/product/` only
+- `ux` → `<docs-folder>/master/ux/` only
+- `architecture` → `<docs-folder>/master/architecture/` only
+- `data-model` → `<docs-folder>/master/data-model/` only
+- `tech` → `<docs-folder>/master/technology/` only
+- `qa` → `<docs-folder>/master/qa/` only
+- `deployment` → `<docs-folder>/master/deployment/` only
+- `operations` → `<docs-folder>/master/operations/` only
+- `reference` → `<docs-folder>/master/reference/` only
 
 Announce: **"Reviewing: <scope>"**
 
@@ -49,13 +49,13 @@ For each folder in scope:
 Validate the codebase is healthy and the QA docs are accurate by running the project's tests:
 
 1. Determine the test command(s):
-   - Read `docs/config.yaml` `source.tests` for test directories.
+   - Read `easyspec-config.yaml` `source.tests` for test directories.
    - Read `package.json` (or equivalent build config) for the test script (e.g., `scripts.test`).
-   - Read `docs/master/qa/testing-strategy.md` for the documented test layers and commands.
+   - Read `<docs-folder>/master/qa/testing-strategy.md` for the documented test layers and commands.
 2. Run every test layer (unit, integration, e2e) using the documented commands.
 3. Capture the pass/fail summary, including failing test names and error output.
 4. Cross-check the QA docs:
-   - Every test file referenced in `docs/master/qa/` test plans exists under the `source.tests` paths.
+   - Every test file referenced in `<docs-folder>/master/qa/` test plans exists under the `source.tests` paths.
    - Every documented test command actually runs and completes.
 5. Treat any test failure as a **Critical** issue — a clean test status is required.
 
@@ -75,14 +75,14 @@ Search every doc file for:
 Flag any found as **Critical violations**.
 
 ### 4b. Code Reference Accuracy (tech docs only)
-For every Code Reference Map table in `docs/master/technology/`:
+For every Code Reference Map table in `<docs-folder>/master/technology/`:
 1. Extract each row: Symbol | Type | Description | File
 2. For each file path in the map:
    - Check if the file exists in the workspace
    - Search for the symbol name in that file
 3. Flag broken paths or missing symbols as **Critical violations**
 
-Reverse check: Scan source directories (from `docs/config.yaml` `source.frontend` and `source.backend`) for key function/component patterns and verify they appear in the Code Reference Map.
+Reverse check: Scan source directories (from `easyspec-config.yaml` `source.frontend` and `source.backend`) for key function/component patterns and verify they appear in the Code Reference Map.
 
 ### 4c. Structure Compliance
 For each folder, check required sections as defined in the es-change-lifecycle skill:
@@ -133,12 +133,12 @@ Output the full report in this format:
 ## Critical Issues (Must Fix)
 
 ### 1. Broken Code Reference
-**File**: docs/5-implementation/modules/auth/tech-spec.md  
+**File**: <docs-folder>/master/technology/modules/auth/tech-spec.md  
 **Issue**: Code Reference Map entry `authenticate_user` → `backend/app/api/v1/auth.py` — file exists but symbol not found.  
 **Action**: Verify function name or update reference.
 
 ### 2. Forbidden Code Snippet
-**File**: docs/3-architecture/mcp-server-architecture.md  
+**File**: <docs-folder>/master/architecture/mcp-server-architecture.md  
 **Issue**: Contains Python fenced code block (lines 45-52).  
 **Action**: Remove code block. Reference `backend/app/services/mcp_service.py` instead.
 
@@ -147,12 +147,12 @@ Output the full report in this format:
 ## Warnings (Should Fix)
 
 ### 3. Missing Code Reference
-**File**: docs/5-implementation/modules/recommendations/tech-spec.md  
+**File**: <docs-folder>/master/technology/modules/recommendations/tech-spec.md  
 **Issue**: `generate_recommendations()` mentioned in text but not in Code Reference Map.  
 **Action**: Add entry: `generate_recommendations | function | Generates AI recommendations | backend/app/services/recommendation_service.py`
 
 ### 4. Possible Redundancy
-**File**: docs/3-architecture/system-overview.md AND docs/3-architecture/modules/mcp/architecture.md  
+**File**: <docs-folder>/master/architecture/system-overview.md AND <docs-folder>/master/architecture/modules/mcp/architecture.md  
 **Issue**: MCP connection flow described in full detail in both files.  
 **Action**: Keep detail in module doc, replace in system-overview with a one-line summary and reference.
 
@@ -160,9 +160,9 @@ Output the full report in this format:
 
 ## Passing Areas
 
-- docs/1-product/ — All feature specs are code-free and properly structured ✓
-- docs/4-database/ — Data model current, uses Mermaid ER, no SQL ✓
-- docs/6-testing/ — Test plans have WHEN/THEN scenarios and valid test file references ✓
+- <docs-folder>/master/product/ — All feature specs are code-free and properly structured ✓
+- <docs-folder>/master/data-model/ — Data model current, uses Mermaid ER, no SQL ✓
+- <docs-folder>/master/qa/ — Test plans have WHEN/THEN scenarios and valid test file references ✓
 
 ---
 

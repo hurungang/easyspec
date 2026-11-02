@@ -1,0 +1,48 @@
+# easyspec:managed v1
+# Easyspec configuration — resolved by every es- agent, prompt, and skill.
+# Docs folder: all easyspec content lives under ./easyspec-docs/ (master/, changes/).
+#
+# LEGACY LAYOUT NOTE: this repo was initialized with the legacy hardcoded `docs/`
+# layout, so its existing docs/changes/ content stays in place for historical
+# reference. Legacy docs/-layout repos need a one-time manual re-init (run
+# /es-init and confirm the docs folder); no migration tooling is provided.
+
+docs_folder: easyspec-docs
+
+project:
+  name: "@myaider/easyspec"
+  description: Spec-driven development kit for agentic coding tools — a shared set of prompts (commands), custom agent definitions, and skills that orchestrate a software engineering agent team through the full change lifecycle.
+
+# Source code locations — used by agents to resolve code references
+source:
+  frontend: null
+  backend: src/
+  schema: null
+  tests:
+    - tests/
+
+# Technology stack — context for agents, not prescriptive
+tech_stack:
+  frontend: null
+  backend: Node.js CLI (ESM)
+  database: null
+  auth: null
+  infra: GitHub Actions
+
+# Key project conventions — agents follow these when making decisions
+conventions:
+  - ESM modules ("type": "module" in package.json)
+  - CLI binary at bin/easyspec-init.js aliased as "easyspec" and "easyspec-init"
+  - Templates in templates/content/ are canonical source for prompts, agents, and skills
+  - Package published to npm as "@myaider/easyspec"
+  - No build step — source is distributed directly
+  - Every easyspec-created artifact starts with the ownership tag (`<!-- easyspec:managed v1 -->` markdown / `# easyspec:managed v1` YAML) — untagged files are never deleted
+  - Project configuration lives in root `easyspec-config.yaml` (not a docs-folder config file); all easyspec content resolves through the configurable docs folder (`docs_folder`, default `easyspec-docs`)
+  - Install manifest at `.easyspec/manifest.json` inside the installed tool directory powers tag-verified upgrade cleanup
+
+# Domain knowledge — business rules agents must always know
+domain:
+  - This is the easyspec source repo itself — changes affect the kit distributed to other projects
+  - Templates are transformed at install time per target agent tool (copilot, opencode, etc.)
+  - Upgrades delete only retired, tagged, user-confirmed files — files without the ownership tag are never removed or overwritten
+  - All entity names use "es-" prefix to avoid overriding user-defined agents/prompts/skills

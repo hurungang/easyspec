@@ -11,17 +11,17 @@ Create a new change with a complete documentation set by orchestrating the agent
 
 ## Step 0: Verify Config is Initialized
 
-Check if `docs/config.yaml` exists and is populated (no fields containing `<` and `>` or `TODO:`).
+Check if `easyspec-config.yaml` exists and is populated (no fields containing `<` and `>` or `TODO:`).
 
-**If `docs/config.yaml` does not exist**:
-> "docs/config.yaml is missing. Running `/es-change-init` first to set up project configuration..."
-> Execute the `/es-change-init` workflow fully before continuing.
+**If `easyspec-config.yaml` does not exist**:
+> "easyspec-config.yaml is missing. Running `/es-init` first to set up project configuration..."
+> Execute the `/es-init` workflow fully before continuing.
 
-**If `docs/config.yaml` exists but has uninitialized placeholders** (`<` or `>` in any value, or fields starting with `TODO:`):
-> "docs/config.yaml has uninitialized fields. Please run `/es-change-init` to complete setup before proposing a change."
-> Stop and wait for the user to run `/es-change-init`.
+**If `easyspec-config.yaml` exists but has uninitialized placeholders** (`<` or `>` in any value, or fields starting with `TODO:`):
+> "easyspec-config.yaml has uninitialized fields. Please run `/es-init` to complete setup before proposing a change."
+> Stop and wait for the user to run `/es-init`.
 
-**If `docs/config.yaml` is properly initialized**: Read it and proceed.
+**If `easyspec-config.yaml` is properly initialized**: Read it and proceed.
 
 ---
 
@@ -62,7 +62,7 @@ Record the scope flags for use in `.change.yaml`.
 
 ## Step 3: Create Change Directory
 
-Create the directory `docs/changes/<name>/` and the `.change.yaml` file:
+Create the directory `<docs-folder>/changes/<name>/` and the `.change.yaml` file:
 
 ```yaml
 name: <name>
@@ -89,7 +89,7 @@ agents_complete:
 
 Read `.github/skills/es-change-lifecycle/SKILL.md` for full document format requirements.
 
-Read `docs/config.yaml` for project-specific context (source paths, tech stack, conventions) to pass to agents.
+Read `easyspec-config.yaml` for project-specific context (source paths, tech stack, conventions) to pass to agents.
 
 ---
 
@@ -98,7 +98,7 @@ Read `docs/config.yaml` for project-specific context (source paths, tech stack, 
 ### 5a. es-Product Owner Agent → `prd.md` + `spec-change.md`
 
 Delegate to **es-product-owner agent**:
-> "Create `docs/changes/<name>/prd.md` following the PRD format in the es-change-lifecycle skill. Then create `docs/changes/<name>/spec-change.md` documenting the delta to the product specification. Context: [summary of the change from user input]. Read `docs/config.yaml` for project context."
+> "Create `<docs-folder>/changes/<name>/prd.md` following the PRD format in the es-change-lifecycle skill. Then create `<docs-folder>/changes/<name>/spec-change.md` documenting the delta to the product specification. Context: [summary of the change from user input]. Read `easyspec-config.yaml` for project context."
 
 After creation, delegate to **es-document-reviewer agent** to review both files.
 
@@ -107,7 +107,7 @@ Update `.change.yaml`: `agents_complete.product-owner: true`
 ### 5b. es-UX Specialist Agent → `prototype/index.html` (if has_ui_changes)
 
 If `has_ui_changes` is true, delegate to **es-ux-specialist agent**:
-> "Review `docs/changes/<name>/prd.md` for user flows, then create `docs/changes/<name>/prototype/index.html` — a self-contained HTML prototype demonstrating the key UI flows for this change. Must work in browser without a server."
+> "Review `<docs-folder>/changes/<name>/prd.md` for user flows, then create `<docs-folder>/changes/<name>/prototype/index.html` — a self-contained HTML prototype demonstrating the key UI flows for this change. Must work in browser without a server."
 
 After creation, delegate to **es-document-reviewer agent** to review.
 
@@ -116,7 +116,7 @@ Update `.change.yaml`: `agents_complete.ux-specialist: true`
 ### 5c. es-Architect Agent → `architecture.md` (if has_architecture_changes)
 
 If `has_architecture_changes` is true, delegate to **es-architect agent**:
-> "Review `docs/changes/<name>/prd.md`. Create `docs/changes/<name>/architecture.md` showing: (1) Changed components with Mermaid diagram, (2) New components, (3) Integration point changes, (4) Data flow changes if relevant, (5) What to update in `docs/master/architecture/`."
+> "Review `<docs-folder>/changes/<name>/prd.md`. Create `<docs-folder>/changes/<name>/architecture.md` showing: (1) Changed components with Mermaid diagram, (2) New components, (3) Integration point changes, (4) Data flow changes if relevant, (5) What to update in `<docs-folder>/master/architecture/`."
 
 After creation, delegate to **es-document-reviewer agent** to review.
 
@@ -125,7 +125,7 @@ Update `.change.yaml`: `agents_complete.architect: true`
 ### 5d. es-Database Designer Agent → `data-model.md` (if has_db_changes)
 
 If `has_db_changes` is true, delegate to **es-database-designer agent**:
-> "Review `docs/changes/<name>/prd.md`. Create `docs/changes/<name>/data-model.md` showing: (1) New entities with Mermaid erDiagram, (2) Modified entities, (3) Removed entities/fields, (4) Which schema files need updating (refer to `docs/config.yaml` `source.schema`), (5) What to update in `docs/master/data-model/`. Data model must be technology-agnostic — show business entities and relationships only, no schema code."
+> "Review `<docs-folder>/changes/<name>/prd.md`. Create `<docs-folder>/changes/<name>/data-model.md` showing: (1) New entities with Mermaid erDiagram, (2) Modified entities, (3) Removed entities/fields, (4) Which schema files need updating (refer to `easyspec-config.yaml` `source.schema`), (5) What to update in `<docs-folder>/master/data-model/`. Data model must be technology-agnostic — show business entities and relationships only, no schema code."
 
 After creation, delegate to **es-document-reviewer agent** to review.
 
@@ -134,15 +134,15 @@ Update `.change.yaml`: `agents_complete.database-designer: true`
 ### 5e. es-Developer Agent → `implementation-plan.md` + `tech-spec.md`
 
 Delegate to **es-developer agent**:
-> "Review all completed change docs in `docs/changes/<name>/`. Read `docs/config.yaml` for project source paths and conventions. Create:
-> 1. `docs/changes/<name>/implementation-plan.md` — ordered task list with clear done conditions, grouped in phases.
+> "Review all completed change docs in `<docs-folder>/changes/<name>/`. Read `easyspec-config.yaml` for project source paths and conventions. Create:
+> 1. `<docs-folder>/changes/<name>/implementation-plan.md` — ordered task list with clear done conditions, grouped in phases.
 >    **Required format rules**:
 >    - Start with an `## Overview` section (2-3 sentences).
 >    - Follow with a `## Task Checklist` section listing every task as `- [ ] <phase>.<num> — <task title>`, grouped under `### Phase N — <name>` sub-headings. All items must use `- [ ]` (never `- [x]` — tasks are only checked during implementation, not planning).
 >    - Follow with detailed `## Phase N` sections containing the full task descriptions and **Done when** conditions.
 >    - End with a `## Completion Checklist` section using `- [ ]` items (never pre-check anything — implementation hasn't happened yet).
 >    - Task numbers must be sequential within each phase with no gaps (1.1, 1.2, 1.3 — not 1.1, 1.3).
-> 2. `docs/changes/<name>/tech-spec.md` — technical specification with Component Breakdown, API Changes, Data Access Patterns, and a complete Code Reference Map table.
+> 2. `<docs-folder>/changes/<name>/tech-spec.md` — technical specification with Component Breakdown, API Changes, Data Access Patterns, and a complete Code Reference Map table.
 >
 > Load `.github/skills/es-change-lifecycle/SKILL.md` for format requirements."
 
@@ -151,19 +151,19 @@ Update `.change.yaml`: `agents_complete.developer: true`
 ### 5f. es-Tester Agent → `test-plan.md`
 
 Delegate to **es-tester agent**:
-> "Review `docs/changes/<name>/prd.md` and `docs/changes/<name>/tech-spec.md`. Create `docs/changes/<name>/test-plan.md` with: Test Strategy, Coverage Areas, Critical Scenarios (WHEN/THEN format), Edge Cases, Acceptance Criteria Checklist, and Test File References (use test paths from `docs/config.yaml` `source.tests`). No test code."
+> "Review `<docs-folder>/changes/<name>/prd.md` and `<docs-folder>/changes/<name>/tech-spec.md`. Create `<docs-folder>/changes/<name>/test-plan.md` with: Test Strategy, Coverage Areas, Critical Scenarios (WHEN/THEN format), Edge Cases, Acceptance Criteria Checklist, and Test File References (use test paths from `easyspec-config.yaml` `source.tests`). No test code."
 
 Update `.change.yaml`: `agents_complete.tester: true`
 
 ### 5g. Deployment Notes (if has_deployment_changes)
 
 If `has_deployment_changes` is true, delegate to **es-developer agent**:
-> "Create `docs/changes/<name>/deployment.md` documenting: new env vars, infrastructure changes, ordered migration steps, rollback procedure, and what to update in `docs/master/deployment/`."
+> "Create `<docs-folder>/changes/<name>/deployment.md` documenting: new env vars, infrastructure changes, ordered migration steps, rollback procedure, and what to update in `<docs-folder>/master/deployment/`."
 
 ### 5h. Operations Notes (if has_operations_changes)
 
 If `has_operations_changes` is true, delegate to **es-developer agent**:
-> "Create `docs/changes/<name>/operations.md` documenting: new monitoring/alerting, logging details, common failure modes, and what to update in `docs/master/operations/`."
+> "Create `<docs-folder>/changes/<name>/operations.md` documenting: new monitoring/alerting, logging details, common failure modes, and what to update in `<docs-folder>/master/operations/`."
 
 ---
 
@@ -173,7 +173,7 @@ If `has_operations_changes` is true, delegate to **es-developer agent**:
 ## Change Proposal Complete
 
 **Change:** <name>
-**Location:** docs/changes/<name>/
+**Location:** <docs-folder>/changes/<name>/
 
 ### Documents Created
 - [x] prd.md — Product requirements

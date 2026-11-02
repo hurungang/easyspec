@@ -1,28 +1,29 @@
 
 # Change Lifecycle Skill
 
-This skill defines the conventions, document formats, and workflows for the full development lifecycle using the software engineering agent team. It is project-agnostic — all project-specific context (tech stack, source paths, conventions) comes from `docs/config.yaml`.
+This skill defines the conventions, document formats, and workflows for the full development lifecycle using the software engineering agent team. It is project-agnostic — all project-specific context (tech stack, source paths, conventions) comes from `easyspec-config.yaml`.
 
 ---
 
 ## Step 0: Always Read Project Config First
 
-Before starting any task, read `docs/config.yaml` to understand:
+Before starting any task, read `easyspec-config.yaml` (project root) to understand:
+- The docs folder: the `docs_folder` setting defines `<docs-folder>` — every path below is rooted there (default `easyspec-docs`)
 - Project name and description
 - Source code locations (frontend, backend, schema files, test directories)
 - Technology stack context
 - Project-specific conventions and domain knowledge
 
-Use the source paths from `docs/config.yaml` everywhere file paths are referenced in this skill.
+Use the source paths from `easyspec-config.yaml` everywhere file paths are referenced in this skill.
 
 ---
 
 ## Change Directory Structure
 
-Every change lives at `docs/changes/<change-name>/` with the following structure:
+Every change lives at `<docs-folder>/changes/<change-name>/` with the following structure:
 
 ```
-docs/changes/<change-name>/
+<docs-folder>/changes/<change-name>/
 ├── .change.yaml              # Metadata: dates, status, scope flags
 ├── prd.md                    # Product requirements (es-product-owner agent)
 ├── spec-change.md            # Delta spec: what changes in product spec (es-product-owner agent)
@@ -62,19 +63,19 @@ agents_complete:
 
 ## Master Product Docs Structure
 
-Master docs live in `docs/master/` with the following structure:
+Master docs live in `<docs-folder>/master/` with the following structure:
 
 | Folder | Purpose | Owner Agent |
 |--------|---------|-------------|
-| `docs/master/product/` | Overall product specification; feature-based product specs | es-product-owner |
-| `docs/master/ux/` | Complete product UI HTML prototype (single mock of whole product) | es-ux-specialist |
-| `docs/master/architecture/` | System architecture Mermaid diagrams; module-level only when needed | es-architect |
-| `docs/master/data-model/` | Overall entity model (tech-agnostic UML/ER); no schema code | es-database-designer |
-| `docs/master/technology/` | Master technical specification with code function reference map | es-developer |
-| `docs/master/qa/` | Feature/module based master test plan set | es-tester |
-| `docs/master/deployment/` | Master deployment instruction | es-developer |
-| `docs/master/operations/` | Master operation instruction | es-developer |
-| `docs/master/reference/` | Reference docs: background context, glossary, API references | any agent |
+| `<docs-folder>/master/product/` | Overall product specification; feature-based product specs | es-product-owner |
+| `<docs-folder>/master/ux/` | Complete product UI HTML prototype (single mock of whole product) | es-ux-specialist |
+| `<docs-folder>/master/architecture/` | System architecture Mermaid diagrams; module-level only when needed | es-architect |
+| `<docs-folder>/master/data-model/` | Overall entity model (tech-agnostic UML/ER); no schema code | es-database-designer |
+| `<docs-folder>/master/technology/` | Master technical specification with code function reference map | es-developer |
+| `<docs-folder>/master/qa/` | Feature/module based master test plan set | es-tester |
+| `<docs-folder>/master/deployment/` | Master deployment instruction | es-developer |
+| `<docs-folder>/master/operations/` | Master operation instruction | es-developer |
+| `<docs-folder>/master/reference/` | Reference docs: background context, glossary, API references | any agent |
 
 ---
 
@@ -83,7 +84,7 @@ Master docs live in `docs/master/` with the following structure:
 ### Global Rules for ALL Documents
 
 - **NO code snippets or scripts** — documents reference source code, they do not contain it
-- **NO schema code in docs** — schema/model files (configured in `docs/config.yaml` `source.schema`) are the source of truth
+- **NO schema code in docs** — schema/model files (configured in `easyspec-config.yaml` `source.schema`) are the source of truth
 - **NO verbose prose** — concise, scannable, use bullet points
 - **Mermaid only for diagrams** — no ASCII art, no DrawIO screenshots, no image embeds
 - **Source code references** — use relative paths from workspace root, e.g. `backend/app/api/v1/auth.py`
@@ -133,7 +134,7 @@ Master docs live in `docs/master/` with the following structure:
 2. **New Components** — New components being added (Mermaid `flowchart` or `C4Context`)
 3. **Integration Points** — New or changed integration points
 4. **Data Flow Changes** — How data flow changes (Mermaid `sequenceDiagram` if helpful)
-5. **Master Arch Update Instructions** — What to update in `docs/master/architecture/`
+5. **Master Arch Update Instructions** — What to update in `<docs-folder>/master/architecture/`
 
 **Rules**: Max 15 nodes per diagram. No implementation details. Component/service level only.
 
@@ -148,8 +149,8 @@ Master docs live in `docs/master/` with the following structure:
 1. **New Entities** — New business entities and their attributes (Mermaid `erDiagram`)
 2. **Modified Entities** — Changes to existing entities (added/removed/renamed fields)
 3. **Removed Entities/Fields** — What is being removed and why
-4. **Schema File References** — Which schema/model files to update (paths from `docs/config.yaml` `source.schema`)
-5. **Master Data Model Update Instructions** — What to update in `docs/master/data-model/`
+4. **Schema File References** — Which schema/model files to update (paths from `easyspec-config.yaml` `source.schema`)
+5. **Master Data Model Update Instructions** — What to update in `<docs-folder>/master/data-model/`
 
 **ER Diagram Requirements**: Every Mermaid `erDiagram` block MUST include:
 - Attribute lines inside each entity block using **generic types only**: `uuid`, `string`, `enum`, `boolean`, `int`, `datetime`, `json`
@@ -215,7 +216,7 @@ Master docs live in `docs/master/` with the following structure:
 | `useAuthStore` | hook | Global auth state management | `<frontend-src>/stores/authStore.ts` |
 ```
 
-Use actual paths from your workspace (relative from root), informed by `docs/config.yaml` `source` settings.
+Use actual paths from your workspace (relative from root), informed by `easyspec-config.yaml` `source` settings.
 
 **Code reference rules**:
 - Every function, class, component, or hook mentioned in the spec MUST appear in the Code Reference Map
@@ -238,7 +239,7 @@ Use actual paths from your workspace (relative from root), informed by `docs/con
 3. **Critical Scenarios** — Key test scenarios with WHEN/THEN format (no code)
 4. **Edge Cases & Risks** — What could go wrong, risk areas
 5. **Acceptance Criteria Checklist** — Maps to PRD acceptance criteria
-6. **Test File References** — Links to test implementation files (paths from `docs/config.yaml` `source.tests`)
+6. **Test File References** — Links to test implementation files (paths from `easyspec-config.yaml` `source.tests`)
 
 **CRITICAL for Database Changes** (`has_db_changes: true`):
 
@@ -279,7 +280,7 @@ When creating test plans for changes that modify database schema:
 2. **Infrastructure Changes** — New services, scaling changes
 3. **Migration Steps** — Ordered steps needed during deployment
 4. **Rollback Procedure** — How to roll back if deployment fails
-5. **Master Deployment Update Instructions** — What to update in `docs/master/deployment/`
+5. **Master Deployment Update Instructions** — What to update in `<docs-folder>/master/deployment/`
 
 ---
 
@@ -292,7 +293,7 @@ When creating test plans for changes that modify database schema:
 1. **Monitoring** — New metrics, alerts, dashboards needed
 2. **Logging** — What is logged and where to find it
 3. **Common Issues** — Known failure modes and how to resolve
-3. **Master Operations Update Instructions** — What to update in `docs/master/operations/`
+3. **Master Operations Update Instructions** — What to update in `<docs-folder>/master/operations/`
 
 ---
 
@@ -300,46 +301,46 @@ When creating test plans for changes that modify database schema:
 
 When updating master docs after a change is implemented:
 
-### `docs/master/product/`
+### `<docs-folder>/master/product/`
 - `product-vision.md` — Update if strategic direction changed
 - `features/` — Update or create feature-level spec file
 - Keep feature specs concise, business-language, no implementation details
 
-### `docs/master/ux/`
+### `<docs-folder>/master/ux/`
 - Maintain a **single** `prototype/index.html` that mocks the FULL product
 - Update the prototype to reflect new UI flows from the change
 - Keep it self-contained (inline CSS/JS), openable without a server
 
-### `docs/master/architecture/`
+### `<docs-folder>/master/architecture/`
 - `system-overview.md` — Update if overall system architecture changed
 - `modules/` — Update module-level diagrams only if needed
 - Keep diagrams to max 15 nodes, Mermaid only
 
-### `docs/master/data-model/`
+### `<docs-folder>/master/data-model/`
 - `overview.md` — Update entity-relationship diagram to reflect new entities/relations (Mermaid `erDiagram`)
 - `modules/<module>/entities.md` — Update module entity list (names only, no schema code)
 - Show business entities and relationships only — no storage implementation details
 
-### `docs/master/technology/`
+### `<docs-folder>/master/technology/`
 - `README.md` — Overall tech spec index
 - `modules/<module>/tech-spec.md` — Module-level tech spec with code reference map
 - Update the Code Reference Map table whenever code locations change
 - This is the **developer's navigation aid** — accuracy is critical
 
-### `docs/master/qa/`
+### `<docs-folder>/master/qa/`
 - `testing-strategy.md` — Update if overall strategy changed
 - `test-plans/<module>-test-plan.md` — Update module-level test plan
-- Reference actual test files using paths from `docs/config.yaml` `source.tests`
+- Reference actual test files using paths from `easyspec-config.yaml` `source.tests`
 
-### `docs/master/deployment/`
+### `<docs-folder>/master/deployment/`
 - Update relevant deployment instruction files
 - Keep deployment steps ordered and verifiable
 
-### `docs/master/operations/`
+### `<docs-folder>/master/operations/`
 - Update monitoring, alerting, and runbook files
 - Keep runbooks actionable and concise
 
-### `docs/master/reference/`
+### `<docs-folder>/master/reference/`
 - Add new reference docs when they provide context not available elsewhere
 - Good candidates: external API docs summaries, domain concept explanations, glossary entries
 
@@ -360,7 +361,7 @@ When updating master docs after a change is implemented:
 | `deployment.md` | es-developer | — |
 | `operations.md` | es-developer | — |
 
-> The agent team (es-product-owner, es-ux-specialist, es-architect, es-database-designer, es-developer, es-tester, es-document-reviewer) is a generic software engineering team. Project-specific tools and conventions are defined in `docs/config.yaml`, not in these skills or agent definitions.
+> The agent team (es-product-owner, es-ux-specialist, es-architect, es-database-designer, es-developer, es-tester, es-document-reviewer) is a generic software engineering team. Project-specific tools and conventions are defined in `easyspec-config.yaml`, not in these skills or agent definitions.
 
 ---
 

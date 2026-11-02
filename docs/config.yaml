@@ -2,6 +2,10 @@
 # Provides project-specific context for the /es-change-* workflow tools.
 # All agents read this file first before starting any task.
 # Run /es-change-init to update this file when the project evolves.
+#
+# SUPERSEDED: this file is superseded by the root-level easyspec-config.yaml
+# (docs_folder: easyspec-docs). Kept for historical reference; legacy docs/-
+# layout repos need a one-time manual re-init via /es-init.
 
 project:
   name: "@myaider/easyspec"

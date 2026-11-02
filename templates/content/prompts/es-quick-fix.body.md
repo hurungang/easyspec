@@ -18,14 +18,14 @@ If an issue description is provided, use it. Otherwise, ask:
 Announce: **"Quick-fix: investigating `<brief issue summary>`"**
 
 Read the following project context files in parallel:
-1. `docs/config.yaml` — project structure, tech stack, conventions, source/test paths
-2. `docs/master/` directory listing — master product docs for spec reference.
+1. `easyspec-config.yaml` — project structure, tech stack, conventions, source/test paths
+2. `<docs-folder>/master/` directory listing — master product docs for spec reference.
 
 ---
 
 ## Step 2: Triage — Identify the Affected Area
 
-Based on the issue description and `docs/config.yaml`, determine which project area is affected:
+Based on the issue description and `easyspec-config.yaml`, determine which project area is affected:
 
 - **Frontend UI issue** (component rendering, interaction, styling) → delegate to **es-ux-specialist agent**
 - **Backend API/logic issue** (endpoint behavior, data processing) → delegate to **es-developer agent**  
@@ -42,8 +42,8 @@ Delegate to the identified agent with this prompt:
 
 > "A bug has been reported: `<issue description>`.
 >
-> Read `docs/config.yaml` for project context and structure.
-> Read relevant master docs from `docs/master/` for expected behavior.
+> Read `easyspec-config.yaml` for project context and structure.
+> Read relevant master docs from `<docs-folder>/master/` for expected behavior.
 >
 > Your task is to **investigate the issue and identify the root cause**. Do NOT fix it yet.
 >
@@ -67,7 +67,7 @@ If the issue is reproducible, delegate to **es-tester agent**:
 >
 > **Investigation findings:** <summary from Step 3>
 >
-> Read `docs/config.yaml` for test directory paths and conventions.
+> Read `easyspec-config.yaml` for test directory paths and conventions.
 >
 > Your task:
 > 1. Create a failing test case that reproduces this issue
@@ -95,7 +95,7 @@ Delegate to **es-developer agent**:
 > "A bug needs to be fixed: `<issue description>`.
 >
 > Read:
-> - `docs/config.yaml` for project conventions and source paths
+> - `easyspec-config.yaml` for project conventions and source paths
 > - Investigation findings from the agent in Step 3
 > - The failing reproduction test at: <test file path> (if created)
 >
@@ -117,7 +117,7 @@ Delegate to **es-tester agent**:
 
 > "The fix for `<issue description>` has been implemented. Verify the fix.
 >
-> Read `docs/config.yaml` for test directory paths.
+> Read `easyspec-config.yaml` for test directory paths.
 >
 > Your task:
 > 1. Run the reproduction test — confirm it now PASSES (if created)
@@ -158,10 +158,10 @@ If tests fail after 2 iterations, escalate to the user.
 ## Guardrails
 
 - **No change docs required** — this workflow skips the change lifecycle entirely
-- **Always read docs/config.yaml first** — project context is essential
-- **Always check master docs** in `docs/master/` for expected behavior reference
+- **Always read easyspec-config.yaml first** — project context is essential
+- **Always check master docs** in `<docs-folder>/master/` for expected behavior reference
 - **Reproduction test is encouraged but optional** — some issues (visual, flaky) may not be practical to automate
 - **Maximum 2 fix-test iterations** — escalate to user if not resolved
 - **Triage before delegating** — send investigation to the right agent to avoid wasted effort
-- **Do NOT create change docs** — this is for quick fixes only. If the issue requires a full change, recommend the user run `/es-change-init` and `/es-change-propose` instead.
+- **Do NOT create change docs** — this is for quick fixes only. If the issue requires a full change, recommend the user run `/es-init` and `/es-change-propose` instead.
 - **If the issue scope is too large** (3+ files across layers, requires architecture changes), recommend using the full change lifecycle

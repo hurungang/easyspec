@@ -43,10 +43,11 @@ npx @myaider/easyspec init
 easyspec init
 ```
 
-Run interactively, the CLI asks two questions:
+Run interactively, the CLI asks three questions:
 
 1. **Harness(es)** — which coding agent(s) to install for (multi-select: Copilot, OpenCode, Claude Code).
 2. **Scope** — install into the current project, or globally into your user profile.
+3. **Docs folder** *(project scope, fresh init only)* — confirm the folder easyspec uses for its documentation. Default is **`easyspec-docs`**; choose a different name if your project already has a `docs/` folder managed by another tool. The confirmed value is stored in `easyspec-config.yaml` at the project root.
 
 You can skip the prompts with flags:
 
@@ -105,11 +106,33 @@ easyspec init --agent opencode --dry-run
 
 ### What is installed
 
-**Commands:** `es-change-init`, `es-change-propose`, `es-change-apply`, `es-change-refinement`, `es-change-fix`, `es-master-review`, `es-change-update-master`, `es-quick-fix`
+**Commands:** `es-init`, `es-change-propose`, `es-change-apply`, `es-change-refinement`, `es-change-fix`, `es-master-review`, `es-change-update-master`, `es-quick-fix`
 
 **Agents:** `es-product-owner`, `es-ux-specialist`, `es-architect`, `es-database-designer`, `es-developer`, `es-tester`, `es-document-reviewer`
 
 **Skill:** `es-change-lifecycle`
+
+### Root config & docs folder
+
+On a project-scope init into a fresh workspace, easyspec scaffolds **`easyspec-config.yaml`** at the project root. It is the single authoritative configuration — every `es-` agent, prompt, and skill resolves paths from it. Key setting:
+
+```yaml
+docs_folder: easyspec-docs   # all easyspec content lives under <docs-folder>/master/ and <docs-folder>/changes/
+```
+
+The rest of the file carries project context (name, description, source locations, tech stack, conventions, domain knowledge) that agents read before starting any task. Update it by re-running `/es-init` in your agent.
+
+> **Legacy layout:** projects initialized with older easyspec versions used a hardcoded `docs/` folder. These are not migrated automatically — run `/es-init` once to re-init, confirm the docs folder, and generate master docs under the new configured folder. Existing `docs/` content is never modified.
+
+### Ownership tagging & upgrades
+
+Every file easyspec creates — the root config, generated master/change docs, and installed prompts, agents, and skills — embeds a machine-readable ownership tag:
+
+```
+<!-- easyspec:managed v1 -->
+```
+
+The tag powers safe upgrades. Each install records a manifest at `.easyspec/manifest.json` inside the installed tool directory (e.g. `<ws>/.github/.easyspec/manifest.json`). On a re-install, files that are retired from the new version (such as the old `es-change-init` command), listed in the previous manifest or matching a retired name, **and** verified to carry the ownership tag on disk are offered for deletion — one confirmation per file, with a keep option. **Files without the tag are never deleted or overwritten**, including user files that share a name with an easyspec artifact. `--dry-run` and non-interactive runs list candidates without deleting anything.
 
 ## Acknowledgements
 

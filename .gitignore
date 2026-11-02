@@ -1,4 +1,5 @@
 node_modules/
 tests/.tmp/
+tests/.tmp-upgrade/
 tests/.fakehome/
 .DS_Store

@@ -2,7 +2,17 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
-import { multiselect, select, isCancel } from "@clack/prompts";
+import { multiselect, select, confirm, text, isCancel } from "@clack/prompts";
+import {
+  CONFIG_FILE_NAME,
+  DEFAULT_DOCS_FOLDER,
+  getDocsFolder,
+  readConfig,
+  resolveDocsPaths,
+  scaffoldConfig,
+} from "./config.mjs";
+import { embedTag } from "./ownership.mjs";
+import { runUpgradeCleanup, writeManifest } from "./upgrade.mjs";
 
 const SUPPORTED_AGENTS = ["copilot", "opencode", "claude-code"];
 
@@ -98,6 +108,9 @@ Options:
                                   prompts interactively if omitted)
   --scope <project|global>        Install scope (prompts interactively if omitted)
   --workspace <path>              Project folder for --scope project (default: cwd)
+                                  Project scope scaffolds easyspec-config.yaml at the
+                                  workspace root with a confirmed docs folder
+                                  (default: easyspec-docs)
   --force                         Overwrite existing files
   --dry-run                       Show what would be copied
   --source-prompts <path>         Source prompt directory for sync command
@@ -361,7 +374,8 @@ function renderEntitiesFromContent(templateDir, destDir, contentDir, entityType,
 
     if (!options.dryRun) {
       ensureDir(destDir, false);
-      fs.writeFileSync(destPath, rendered, "utf8");
+      fs.writeFileSync(destPath, embedTag(rendered), "utf8");
+      options.installedFiles.push(destPath);
     }
     summary[exists ? "overwritten" : "copied"] += 1;
   }
@@ -406,7 +420,8 @@ function copySkillDirectory(srcSkillDir, destSkillDir, contentDir, options) {
       }
 
       if (!options.dryRun) {
-        fs.writeFileSync(sfDest, rendered, "utf8");
+        fs.writeFileSync(sfDest, embedTag(rendered), "utf8");
+        options.installedFiles.push(sfDest);
       }
       summary[exists ? "overwritten" : "copied"] += 1;
     }
@@ -476,7 +491,7 @@ function renderDirectoryContents(templateDir, destDir, contentDir, options) {
   return summary;
 }
 
-function installToRoot(rootPath, promptsDest, sourceRoot, contentRoot, agent, options) {
+async function installToRoot(rootPath, promptsDest, sourceRoot, contentRoot, agent, options) {
   const profile = TOOL_PROFILES[agent];
   const promptsSrc = path.join(sourceRoot, "prompts");
   const agentsSrc = path.join(sourceRoot, "agents");
@@ -496,6 +511,13 @@ function installToRoot(rootPath, promptsDest, sourceRoot, contentRoot, agent, op
 
   const contentSkillsDir = path.join(contentRoot, "skills");
   mergeSummary(summary, copySkillDirectory(contentSkillsDir, skillsDest, contentRoot, options));
+
+  // Upgrade cleanup: offer to delete retired tagged files from prior installs.
+  const newRelPaths = (options.installedFiles || []).map((abs) => path.relative(rootPath, abs));
+  options.cleanup = await runUpgradeCleanup(rootPath, newRelPaths, { dryRun: options.dryRun });
+
+  // Record the install manifest (new-version side of the upgrade comparison).
+  writeManifest(rootPath, newRelPaths, { dryRun: options.dryRun });
 
   return {
     rootPath,
@@ -523,7 +545,7 @@ function collectPromptFiles(promptDir) {
   }
   return fs
     .readdirSync(promptDir, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && /^es-change-.*\.prompt\.md$/i.test(entry.name))
+    .filter((entry) => entry.isFile() && /^es-.*\.prompt\.md$/i.test(entry.name))
     .map((entry) => path.join(promptDir, entry.name));
 }
 
@@ -657,6 +679,30 @@ function applyModelSelectionsToRoot(rootPath, selection, dryRun) {
   return summary;
 }
 
+async function confirmDocsFolder(defaultFolder, dryRun) {
+  if (dryRun || !process.stdin.isTTY) {
+    return defaultFolder;
+  }
+
+  const useDefault = await confirm({
+    message: `Use '${defaultFolder}' as the easyspec docs folder? (all easyspec project content lives here)`,
+    initialValue: true,
+  });
+  if (!isCancel(useDefault) && useDefault) {
+    return defaultFolder;
+  }
+
+  const answer = await text({
+    message: "Docs folder name:",
+    placeholder: defaultFolder,
+    defaultValue: defaultFolder,
+  });
+  if (isCancel(answer) || !answer || !answer.trim()) {
+    return defaultFolder;
+  }
+  return answer.trim();
+}
+
 async function promptForAgents() {
   const selected = await multiselect({
     message: "Select target harness(es) — space to toggle, enter to confirm:",
@@ -771,8 +817,29 @@ export async function runCli(argv) {
     force: args.force,
     dryRun: args.dryRun,
     workspace: args.workspace,
+    installedFiles: [],
   };
   const modelSelection = resolveModelSelection(args);
+
+  // Project-scope installs resolve the docs folder from the root config,
+  // scaffolding the config (with docs-folder confirmation) when absent.
+  if (scope === "project") {
+    const { exists, config } = readConfig(args.workspace);
+    let docsFolder = getDocsFolder(config);
+    if (!exists) {
+      docsFolder = await confirmDocsFolder(docsFolder, args.dryRun);
+      const result = scaffoldConfig(args.workspace, docsFolder, { dryRun: args.dryRun });
+      if (result === "created") {
+        console.log(`[easyspec-init] created ${CONFIG_FILE_NAME} at ${args.workspace} (docs folder: ${docsFolder})`);
+      } else if (result === "dry-run") {
+        console.log(`[easyspec-init] would create ${CONFIG_FILE_NAME} at ${args.workspace} (docs folder: ${docsFolder})`);
+      }
+    } else {
+      console.log(`[easyspec-init] using existing ${CONFIG_FILE_NAME} (docs folder: ${docsFolder})`);
+    }
+    const docsPaths = resolveDocsPaths(args.workspace, docsFolder);
+    console.log(`[easyspec-init] easyspec project content root: ${docsPaths.docsFolder}/ (master/, changes/)`);
+  }
 
   const installReports = [];
 
@@ -782,14 +849,16 @@ export async function runCli(argv) {
       throw new Error(`Template directory not found: ${sourceRoot}`);
     }
 
+    options.installedFiles = [];
+
     if (scope === "project") {
       const projectRoot = getProjectRoot(agent, args.workspace);
       const promptsDest = path.join(projectRoot, TOOL_PROFILES[agent].promptDir);
-      installReports.push(installToRoot(projectRoot, promptsDest, sourceRoot, contentRoot, agent, options));
+      installReports.push(await installToRoot(projectRoot, promptsDest, sourceRoot, contentRoot, agent, options));
     } else {
       const homeRoot = getHomeRoot(agent);
       const promptsDest = resolveGlobalPromptDir(agent, homeRoot);
-      installReports.push(installToRoot(homeRoot, promptsDest, sourceRoot, contentRoot, agent, options));
+      installReports.push(await installToRoot(homeRoot, promptsDest, sourceRoot, contentRoot, agent, options));
     }
   }
 
@@ -802,6 +871,16 @@ export async function runCli(argv) {
       console.log(`  prompts -> ${report.promptsDest}`);
     }
     console.log(`  copied=${report.copied} overwritten=${report.overwritten} skipped=${report.skipped}`);
+    if (report.cleanup && report.cleanup.candidates.length > 0) {
+      const { deleted, kept } = report.cleanup;
+      console.log(`  upgrade cleanup: deleted=${deleted.length} kept=${kept.length}`);
+      for (const rel of deleted) {
+        console.log(`    deleted: ${rel}`);
+      }
+      for (const rel of kept) {
+        console.log(`    kept: ${rel}`);
+      }
+    }
     agentDirs.add(path.join(report.rootPath, "agents"));
   }
 

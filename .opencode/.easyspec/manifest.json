@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "installedAt": "2026-11-02T03:03:34.523Z",
+  "files": [
+    {
+      "path": "agents/es-architect.md",
+      "hash": "c1b9924845a2bbc7921f584ad3df6a7c3ae0f30c2933fdb7a12c7b9462083302"
+    },
+    {
+      "path": "agents/es-database-designer.md",
+      "hash": "5ec8ca46d8f9393da12765793f43a6424e81b52a711a66d275411d982cdf1031"
+    },
+    {
+      "path": "agents/es-developer.md",
+      "hash": "cbd1622fdf1efe409c25636fa1c334097a5d0009923a116a0f85a8b115ead607"
+    },
+    {
+      "path": "agents/es-document-reviewer.md",
+      "hash": "120ec074c136305a171ccf477886f7bd5916547dc7e546bb0c7286c07b777d62"
+    },
+    {
+      "path": "agents/es-product-owner.md",
+      "hash": "ce806eb655ef0c73fce266796a5798421d8dad0ccd9bc06bb802636017faee00"
+    },
+    {
+      "path": "agents/es-tester.md",
+      "hash": "7ebd43adf5d6e90d2f43fe82ea444fb0cad7d6c439cebd78d821af24a2de1ceb"
+    },
+    {
+      "path": "agents/es-ux-specialist.md",
+      "hash": "05bfd92717726817d04109824cd75712a1f66d41146730f8cd71a5a956f34ec6"
+    },
+    {
+      "path": "commands/es-init.md",
+      "hash": "42a2f7c0721986031f2ec3d39bab79d9c84d810002f44bbd70378b02d1c4bb0d"
+    }
+  ]
+}

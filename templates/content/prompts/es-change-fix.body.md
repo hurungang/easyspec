@@ -15,7 +15,7 @@ If a change name is provided, use it.
 
 Otherwise, list available changes:
 ```
-Get-ChildItem docs/changes/ -Directory | Where-Object { $_.Name -ne 'archive' }
+Get-ChildItem <docs-folder>/changes/ -Directory | Where-Object { $_.Name -ne 'archive' }
 ```
 
 If only one active change exists, auto-select it. If multiple, ask the user to select.
@@ -40,7 +40,7 @@ If the description is ambiguous or missing critical details, ask one clarifying 
 
 ## Step 3: Audit Current Change State
 
-Read all existing files in `docs/changes/<name>/` to understand the current state:
+Read all existing files in `<docs-folder>/changes/<name>/` to understand the current state:
 
 1. `.change.yaml` — Current status and completed agents
 2. `prd.md` — Requirements and acceptance criteria
@@ -53,7 +53,7 @@ Read all existing files in `docs/changes/<name>/` to understand the current stat
 9. `test-plan.md` — Test strategy and scenarios
 10. `fix-log.md` — (if exists) Previous fixes
 
-Also read `docs/config.yaml` for project context.
+Also read `easyspec-config.yaml` for project context.
 
 Determine the **implementation phase**:
 - **Phase A**: No code written yet
@@ -104,7 +104,7 @@ If the user selects **Proceed**, continue. If **Cancel**, stop and notify that n
 
 ## Step 5: Create or Update Fix Log
 
-Check if `docs/changes/<name>/fix-log.md` exists.
+Check if `<docs-folder>/changes/<name>/fix-log.md` exists.
 
 **If it does NOT exist**, create it with this structure:
 
@@ -176,7 +176,7 @@ Delegate to **es-tester agent**:
 >
 > **Issue:** <full issue description with observed vs expected behavior>
 >
-> Read all change docs in `docs/changes/<name>/` and the current codebase via the Code Reference Map in `tech-spec.md`.
+> Read all change docs in `<docs-folder>/changes/<name>/` and the current codebase via the Code Reference Map in `tech-spec.md`.
 >
 > Your task is to **create a failing test case** that reproduces this issue. The test should:
 > 1. Demonstrate the observed (incorrect) behavior
@@ -190,7 +190,7 @@ Delegate to **es-tester agent**:
 >
 > After creating the test:
 > 1. Run it to confirm it fails
-> 2. Document the test case location in `docs/changes/<name>/fix-log.md` under the current fix entry in the 'Test Cases Added/Modified' section
+> 2. Document the test case location in `<docs-folder>/changes/<name>/fix-log.md` under the current fix entry in the 'Test Cases Added/Modified' section
 > 3. Report the test file path and the failure output
 >
 > Do NOT fix the issue — only create the reproduction test."
@@ -221,9 +221,9 @@ Delegate to **es-developer agent**:
 > **Issue:** <issue description>
 >
 > Read:
-> - `docs/changes/<name>/fix-log.md` — current fix entry with failing test details
-> - `docs/changes/<name>/tech-spec.md` — Code Reference Map
-> - `docs/config.yaml` — project conventions
+> - `<docs-folder>/changes/<name>/fix-log.md` — current fix entry with failing test details
+> - `<docs-folder>/changes/<name>/tech-spec.md` — Code Reference Map
+> - `easyspec-config.yaml` — project conventions
 > - The failing test at: <test file path>
 >
 > Your task is to:
@@ -231,8 +231,8 @@ Delegate to **es-developer agent**:
 > 2. Implement the fix in the code
 > 3. Ensure the reproduction test now passes
 > 4. Ensure all existing tests still pass
-> 5. Update `docs/changes/<name>/tech-spec.md` Code Reference Map if you changed any code locations
-> 6. Document your changes in `docs/changes/<name>/fix-log.md` under 'Code Changes' section:
+> 5. Update `<docs-folder>/changes/<name>/tech-spec.md` Code Reference Map if you changed any code locations
+> 6. Document your changes in `<docs-folder>/changes/<name>/fix-log.md` under 'Code Changes' section:
 >    - List all files modified
 >    - Brief description of what was changed and why
 >    - Include file paths and line numbers
@@ -260,8 +260,8 @@ Delegate to **es-tester agent**:
 > "The fix for `<name>` (Fix ID: `FIX-<timestamp>`) has been implemented. Now verify the fix is complete.
 >
 > Read:
-> - `docs/changes/<name>/fix-log.md` — current fix entry
-> - `docs/changes/<name>/test-plan.md` — full test coverage
+> - `<docs-folder>/changes/<name>/fix-log.md` — current fix entry
+> - `<docs-folder>/changes/<name>/test-plan.md` — full test coverage
 >
 > Your task is to:
 > 1. Run the reproduction test — confirm it now PASSES
@@ -275,7 +275,7 @@ Delegate to **es-tester agent**:
 >    - Report failure details to developer for additional fixes
 >    - Iterate until all tests pass
 >
-> Update `docs/changes/<name>/fix-log.md` with final test results under the current fix entry."
+> Update `<docs-folder>/changes/<name>/fix-log.md` with final test results under the current fix entry."
 
 **Test-Fix Iteration (if needed):**
 - If tests fail and it's related to the fix, return to developer for additional fixes
@@ -311,26 +311,26 @@ If the fix revealed that acceptance criteria were unclear or incorrect, delegate
 > **Issue that was fixed:** <issue description>
 > **Code changes made:** <summary from fix log>
 >
-> Read `docs/changes/<name>/prd.md` and assess if acceptance criteria need clarification or updates to prevent similar issues. If changes are needed, update the PRD. If not, report that PRD is accurate."
+> Read `<docs-folder>/changes/<name>/prd.md` and assess if acceptance criteria need clarification or updates to prevent similar issues. If changes are needed, update the PRD. If not, report that PRD is accurate."
 
 If updated, delegate to **es-document-reviewer agent** to review.
 
 ### 9b. Check if Spec Change needs updates
 
 If the fix changed the intended behavior described in spec-change.md, delegate to **es-product-owner agent**:
-> "Review `docs/changes/<name>/spec-change.md` in light of fix `FIX-<timestamp>`. Update if the spec delta description needs to reflect the corrected behavior."
+> "Review `<docs-folder>/changes/<name>/spec-change.md` in light of fix `FIX-<timestamp>`. Update if the spec delta description needs to reflect the corrected behavior."
 
 If updated, delegate to **es-document-reviewer agent** to review.
 
 ### 9c. Check if Tech Spec needs updates
 
 Delegate to **es-developer agent**:
-> "Review `docs/changes/<name>/tech-spec.md` after fix `FIX-<timestamp>`. Ensure the Code Reference Map is up-to-date with all changes made during the fix. Update technical approach description if the fix revealed architectural considerations."
+> "Review `<docs-folder>/changes/<name>/tech-spec.md` after fix `FIX-<timestamp>`. Ensure the Code Reference Map is up-to-date with all changes made during the fix. Update technical approach description if the fix revealed architectural considerations."
 
 ### 9d. Check if Test Plan needs updates
 
 Delegate to **es-tester agent**:
-> "Review `docs/changes/<name>/test-plan.md` after fix `FIX-<timestamp>`. Add the new test scenario if it represents a gap in the original test plan. Update test strategy if this fix revealed a testing blind spot."
+> "Review `<docs-folder>/changes/<name>/test-plan.md` after fix `FIX-<timestamp>`. Add the new test scenario if it represents a gap in the original test plan. Update test strategy if this fix revealed a testing blind spot."
 
 ### 9e. Update Fix Log
 
@@ -386,7 +386,7 @@ Update the fix status: `**Status:** Resolved`
 <list of docs updated, or "No docs required updates">
 
 ### Fix Log
-Full details recorded in: `docs/changes/<name>/fix-log.md#fix-<timestamp-yyyymmdd-hhmmss>`
+Full details recorded in: `<docs-folder>/changes/<name>/fix-log.md#fix-<timestamp-yyyymmdd-hhmmss>`
 
 ---
 

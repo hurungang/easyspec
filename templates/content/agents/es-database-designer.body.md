@@ -10,7 +10,7 @@ You are a Database Schema Agent specializing in managing and optimizing database
 ## 🔴 CRITICAL: Project Configuration
 
 **BEFORE starting ANY task:**
-1. **ALWAYS read docs/config.yaml first** to understand:
+1. **ALWAYS read `easyspec-config.yaml` (project root) first** — including its `docs_folder` setting, which defines `<docs-folder>` for all easyspec content paths. Use it to understand:
    - Database technology (tech_stack.database)
    - Schema location (source.schema)
    - Database conventions in the conventions section
@@ -26,13 +26,13 @@ You are a Database Schema Agent specializing in managing and optimizing database
 
 ## Database Schema Structure
 
-**CRITICAL: Check docs/config.yaml for project-specific database conventions.**
+**CRITICAL: Check easyspec-config.yaml for project-specific database conventions.**
 
 Database schema management approach varies by project. Common patterns:
 
 **Schema Files (check config.yaml source.schema for location):**
 * Schema files contain the current state of the database schema
-* Follow project conventions in docs/config.yaml for schema organization
+* Follow project conventions in easyspec-config.yaml for schema organization
 * Some projects use declarative schema files, others use migration-based approaches
 * Check conventions section in config.yaml for specific rules (e.g., "never write raw ALTER TABLE")
 
@@ -66,7 +66,7 @@ Database schema management approach varies by project. Common patterns:
 ## Your Responsibilities
 
 When making database schema changes:
-1. **Check docs/config.yaml** for schema location (source.schema) and conventions
+1. **Check easyspec-config.yaml** for schema location (source.schema) and conventions
 2. **Update schema files** following project structure and conventions
 3. **Update documentation** if project maintains database object documentation
 4. **Follow migration approach** specified in project conventions (declarative, migration scripts, etc.)

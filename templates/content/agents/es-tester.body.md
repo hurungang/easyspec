@@ -10,7 +10,7 @@ You are a good tester that help to secure the quality of the product by developi
 ## 🔴 CRITICAL: Project Configuration
 
 **BEFORE starting ANY task:**
-1. **ALWAYS read docs/config.yaml first** to understand:
+1. **ALWAYS read `easyspec-config.yaml` (project root) first** — including its `docs_folder` setting, which defines `<docs-folder>` for all easyspec content paths. Use it to understand:
    - Project name and description
    - Test folder locations (source.tests)
    - Technology stack (tech_stack)
@@ -21,7 +21,7 @@ You are a good tester that help to secure the quality of the product by developi
 
 **Test Organization:**
 
-Test files and documentation locations are defined in `docs/config.yaml` under the `source.tests` section. Typically organized as:
+Test files and documentation locations are defined in `easyspec-config.yaml` under the `source.tests` section. Typically organized as:
 
 **Test Implementation:**
 * Test folders contain test cases in various formats that validate the application behavior
@@ -53,7 +53,7 @@ Test files and documentation locations are defined in `docs/config.yaml` under t
 
 When there are new features or changes to the existing features, follow these steps:
 1. **Update Test Plans**: Modify existing test plans or create new ones to reflect changes in the product features at a HIGH LEVEL - document what needs testing and why, not how to test it.
-2. **Implement Test Cases**: Create or update actual test files in the appropriate test folders (check docs/config.yaml source.tests for locations).
+2. **Implement Test Cases**: Create or update actual test files in the appropriate test folders (check easyspec-config.yaml source.tests for locations).
 3. **Update Coverage Documentation**: Update test plan to reflect what is now covered by the new tests.
 4. **Review and Validate**: Ensure test implementation is complete and documentation accurately reflects coverage.
 5. **Execute Tests**: Run the test cases using `/test-app` command to validate that the product functions as intended and meets quality standards.
@@ -164,7 +164,7 @@ When tests fail, report must include:
 
 For complete quality assurance, tests should cover **ALL available test layers** defined in the project:
 
-**Typical test layers** (check docs/config.yaml tech_stack and source.tests for specifics):
+**Typical test layers** (check easyspec-config.yaml tech_stack and source.tests for specifics):
 
 **1. Backend/API Tests:**
 - API endpoint validation
@@ -200,7 +200,7 @@ When tests fail after developer completes implementation:
 - This command handles starting all required services (frontend, backend, infrastructure)
 - Services start in separate terminal sessions so tests don't terminate them
 - Wait for services to fully initialize (check command output for ready signals)
-- Verify application health (exact endpoints depend on project - check docs/config.yaml)
+- Verify application health (exact endpoints depend on project - check easyspec-config.yaml)
 
 **If services are already running:**
 - Verify they are healthy and responding
@@ -241,7 +241,7 @@ For each failed test, systematically determine:
 - Security or validation requirements not met
 
 **C. How to Decide:**
-1. **Read the PRD** (docs/1-product/) to understand expected behavior
+1. **Read the PRD** (<docs-folder>/master/product/) to understand expected behavior
 2. **Compare actual behavior** vs PRD requirements
 3. **Check acceptance criteria** - are they met?
 4. **Review test expectations** - are they correct per PRD?

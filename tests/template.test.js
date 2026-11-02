@@ -24,7 +24,7 @@ const AGENTS = [
 const PROMPTS = [
   "es-change-apply",
   "es-change-fix",
-  "es-change-init",
+  "es-init",
   "es-change-propose",
   "es-change-refinement",
   "es-master-review",
@@ -231,8 +231,8 @@ describe("template rendering", () => {
   });
 
   it("renders opencode prompt without model or tools", () => {
-    const rendered = renderFromBody("opencode", "prompts", "es-change-init");
-    assert.ok(rendered.startsWith("---\nname: es-change-init"));
+    const rendered = renderFromBody("opencode", "prompts", "es-init");
+    assert.ok(rendered.startsWith("---\nname: es-init"));
     assert.ok(!rendered.includes("model:"));
     assert.ok(!rendered.includes("tools:"));
   });
@@ -295,6 +295,54 @@ describe("cross-reference consistency", () => {
     const matches = [...skillBody.matchAll(badYaml)];
     assert.strictEqual(matches.length, 0,
       `SKILL.body.md: unprefixed agent in YAML: ${matches.map((m) => m[0]).join(", ")}`);
+  });
+});
+
+// ——— Config-Resolved Path Integrity ———
+
+describe("docs-folder migration integrity", () => {
+  function* contentFiles(dir) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        yield* contentFiles(full);
+      } else if (entry.isFile() && entry.name.endsWith(".md")) {
+        yield full;
+      }
+    }
+  }
+
+  it("no template content references hardcoded docs/ project paths", () => {
+    const offenders = [];
+    for (const file of contentFiles(contentDir)) {
+      const content = readFile(file);
+      // A legacy hardcoded project path like `docs/config.yaml`, `docs/master/`,
+      // `docs/changes/` — the literal marker of the old layout.
+      if (/docs\/(config\.yaml|master|changes|\[)/.test(content)) {
+        offenders.push(path.relative(contentDir, file));
+      }
+    }
+    assert.deepStrictEqual(offenders, [], `hardcoded docs/ paths in: ${offenders.join(", ")}`);
+  });
+
+  it("no template content references es-change-init", () => {
+    const offenders = [];
+    for (const file of contentFiles(contentDir)) {
+      if (readFile(file).includes("es-change-init")) {
+        offenders.push(path.relative(contentDir, file));
+      }
+    }
+    assert.deepStrictEqual(offenders, [], `es-change-init references in: ${offenders.join(", ")}`);
+  });
+
+  it("agents and skill instruct reading the docs folder from the root config", () => {
+    for (const agent of AGENTS) {
+      const content = readFile(contentDir, "agents", `${agent}.body.md`);
+      assert.ok(content.includes("easyspec-config.yaml"), `${agent}: missing root config reference`);
+      assert.ok(content.includes("docs_folder") || content.includes("<docs-folder>"), `${agent}: missing docs-folder resolution`);
+    }
+    const skill = readFile(contentDir, "skills", "es-change-lifecycle", "SKILL.body.md");
+    assert.ok(skill.includes("docs_folder"), "skill: missing docs_folder resolution rule");
   });
 });
 
