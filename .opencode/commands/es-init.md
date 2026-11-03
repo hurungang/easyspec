@@ -13,11 +13,12 @@ Initialize easyspec for this project: create or confirm `easyspec-config.yaml` a
 
 ## Step 1: Create or Confirm the Root Config
 
-Check if `easyspec-config.yaml` exists at the project root.
+Check the config state in this order:
 
-- **If it does not exist**: create it (Step 1a), including confirming the docs folder.
-- **If it exists and has placeholder values** (any field contains `<` and `>`, or values starting with `TODO:`): announce "Config found but not yet initialized — completing setup." and continue from Step 1a.
-- **If it exists and appears populated**: confirm the docs folder with the user, then jump to Step 2 (Master Doc Generation).
+1. **Legacy config only** — if `easyspec-config.yaml` is missing but `docs/config.yaml` exists, follow the migration flow in the es-change-lifecycle skill (Step 0 → *Legacy `docs/config.yaml`*). Ask for confirmation, move the config to the project root with `docs_folder: docs`, keep all existing `docs/` content in place, then continue from Step 2.
+2. **No config at all** — create it (Step 1a), including confirming the docs folder.
+3. **Config exists but has placeholder values** (any field contains `<` and `>`, or values starting with `TODO:`): announce "Config found but not yet initialized — completing setup." and continue from Step 1a.
+4. **Config exists and appears populated**: confirm the docs folder with the user, then jump to Step 2 (Master Doc Generation).
 
 ### Step 1a: Confirm the docs folder
 

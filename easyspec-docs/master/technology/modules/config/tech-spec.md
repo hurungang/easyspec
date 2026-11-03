@@ -11,6 +11,7 @@ The config module (`src/config.mjs`, introduced by the rework) is the Docs Folde
 - **Parse** — `parseConfigYaml` is a tolerant parser: malformed or unparsable content parses to `{}` and silently degrades to the default docs folder rather than erroring.
 - **Resolve** — `getDocsFolder` extracts the docs folder setting; `resolveDocsPaths` derives the master/changes directory paths.
 - **Scaffold** — when the config file is absent, `scaffoldConfig` creates it (with the confirmed docs folder) without clobbering an existing file; `renderConfigYaml` renders the config schema, with `parseListValue` handling list-valued `source`/`tests` sections.
+- **Legacy migration** — `readLegacyConfig` detects `docs/config.yaml` only when it looks like an easyspec config (project/source/tech_stack/conventions/domain or the old `# Change Lifecycle Configuration` header); `renderMigratedConfigYaml` preserves its body and adds `docs_folder: docs`; `migrateLegacyConfig` writes the root config and removes the legacy file only when explicitly invoked (never automatically).
 - **Consumers** — CLI code resolves paths through this module; all template content references config-resolved paths conceptually (agents, prompts, and the lifecycle skill never hardcode `docs/`).
 
 ## Code Reference Map
@@ -19,6 +20,8 @@ The config module (`src/config.mjs`, introduced by the rework) is the Docs Folde
 |--------|------|-------------|------|
 | `CONFIG_FILE_NAME` | constant | Root config file name (`easyspec-config.yaml`) | `src/config.mjs` |
 | `DEFAULT_DOCS_FOLDER` | constant | Default docs folder (`easyspec-docs`) | `src/config.mjs` |
+| `LEGACY_CONFIG_RELATIVE_PATH` | constant | Legacy config location (`docs/config.yaml`) | `src/config.mjs` |
+| `LEGACY_DOCS_FOLDER` | constant | Docs folder used by the legacy layout (`docs`) | `src/config.mjs` |
 | `parseConfigYaml` | function | Tolerant YAML subset parser; malformed content yields `{}` | `src/config.mjs` |
 | `parseListValue` | function | Parses list-valued config entries (e.g. `tests` sources) | `src/config.mjs` |
 | `configPath` | function | Resolves the root config file path for a workspace | `src/config.mjs` |
@@ -27,8 +30,11 @@ The config module (`src/config.mjs`, introduced by the rework) is the Docs Folde
 | `resolveDocsPaths` | function | Derives `<docs-folder>/master/` and `<docs-folder>/changes/` paths | `src/config.mjs` |
 | `renderConfigYaml` | function | Renders the config file schema with the docs-folder setting | `src/config.mjs` |
 | `scaffoldConfig` | function | Creates the config file when absent, without clobbering | `src/config.mjs` |
+| `readLegacyConfig` | function | Detects and parses a legacy `docs/config.yaml` | `src/config.mjs` |
+| `renderMigratedConfigYaml` | function | Renders a root config from the legacy body with `docs_folder: docs` | `src/config.mjs` |
+| `migrateLegacyConfig` | function | One-step migration: writes the root config, then removes the legacy file | `src/config.mjs` |
 | repo root config | config | This repo's own easyspec configuration (configured `easyspec-docs/` layout) | `easyspec-config.yaml` |
-| config tests | tests | Config parsing, docs-folder resolution, scaffolding coverage | `tests/config.test.js` |
+| config tests | tests | Config parsing, docs-folder resolution, scaffolding, and legacy migration coverage | `tests/config.test.js` |
 | ownership & config doc | doc | Ownership-tag contract, manifest location, `easyspec-config.yaml` schema | `easyspec-docs/changes/archive/2026-11-02-easyspec-config-and-init-rework/ownership-and-config.md` |
 
 ## Data Flow

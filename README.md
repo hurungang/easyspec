@@ -122,7 +122,7 @@ docs_folder: easyspec-docs   # all easyspec content lives under <docs-folder>/ma
 
 The rest of the file carries project context (name, description, source locations, tech stack, conventions, domain knowledge) that agents read before starting any task. Update it by re-running `/es-init` in your agent.
 
-> **Legacy layout:** projects initialized with older easyspec versions used a hardcoded `docs/` folder. These are not migrated automatically — run `/es-init` once to re-init, confirm the docs folder, and generate master docs under the new configured folder. Existing `docs/` content is never modified.
+> **Legacy layout:** projects initialized with older easyspec versions used a hardcoded `docs/` folder with `docs/config.yaml`. On the first run of the new version, easyspec offers a one-step migration: move `docs/config.yaml` to `easyspec-config.yaml` at the project root and set `docs_folder: docs`. All existing `docs/master/` and `docs/changes/` content stays exactly where it is — nothing is moved without your confirmation.
 
 ### Ownership tagging & upgrades
 

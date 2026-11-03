@@ -16,7 +16,7 @@
   - When no usable documentation exists, the codebase itself is scanned to produce the docs.
 - Master docs cover the standard areas (product, architecture, data model, technology, QA, deployment, operations, reference as applicable).
 - When project structure cannot be reliably detected, `es-init` asks the user rather than guessing.
-- Projects initialized with the legacy hardcoded layout require a one-time manual re-init; upgrade messaging states this clearly.
+- Projects initialized with the legacy `docs/config.yaml` layout get a one-step, user-confirmed migration: the config moves to the project root with `docs_folder: docs`, and all existing docs stay exactly where they are. Nothing is migrated without confirmation.
 
 ## Value
 

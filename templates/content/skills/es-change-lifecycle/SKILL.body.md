@@ -16,6 +16,35 @@ Before starting any task, read `easyspec-config.yaml` (project root) to understa
 
 Use the source paths from `easyspec-config.yaml` everywhere file paths are referenced in this skill.
 
+### Legacy `docs/config.yaml` (older easyspec versions)
+
+If `easyspec-config.yaml` does not exist at the project root **but** `docs/config.yaml` does, the project is on the legacy hardcoded layout. Do **not** create a new config or silently fall back to `easyspec-docs` — that would strand the user's existing master and change docs.
+
+Before prompting, verify the file looks like an easyspec config: it contains `project:`, `source:`, `tech_stack:`, `conventions:`, or `domain:`, or the old `# Change Lifecycle Configuration` header. If it looks like another tool's config, do **not** migrate it — treat `docs/` as a third-party folder and use the normal init flow.
+
+Ask for confirmation once:
+
+> "This project uses the legacy layout: its config is at `docs/config.yaml`. I can migrate it in one lightweight step — move the config to `easyspec-config.yaml` at the project root and set `docs_folder: docs`, leaving the existing `master/` and `changes/` folders under `docs/` exactly where they are. Proceed? (yes/no)"
+
+If the user confirms:
+1. Read `docs/config.yaml` and preserve all project context (`project`, `source`, `tech_stack`, `conventions`, `domain`, and any unknown keys).
+2. Write `easyspec-config.yaml` at the project root: keep the existing values, add `docs_folder: docs`, and include the ownership tag (`# easyspec:managed v1`).
+3. Verify the new root config parses and `docs_folder: docs` is present.
+4. Remove `docs/config.yaml` — it is now superseded. Do not move, rewrite, or delete anything else under `docs/`.
+5. Announce: "Migrated `docs/config.yaml` → `easyspec-config.yaml` (`docs_folder: docs`). Existing docs stay in place."
+6. Continue the workflow with `<docs-folder> = docs`.
+
+If the user declines:
+- Do not create a root config and do not write anything into `docs/`.
+- Ask where the project's easyspec docs live and whether they want the legacy layout kept.
+- Stop the workflow until the docs folder is confirmed.
+
+Edge cases:
+- **Both files exist** — the root config wins. Treat `docs/config.yaml` as stale; mention it and offer to remove it, but never delete it without confirmation.
+- **Root config exists but has no `docs_folder`** — if the legacy layout is present, ask whether `docs` is the intended docs folder and add `docs_folder: docs` only after confirmation.
+- **No `docs/` folder and no root config** — fresh project: use the normal init flow (default `easyspec-docs`).
+- Never auto-migrate in a non-interactive run; require explicit confirmation.
+
 ---
 
 ## Change Directory Structure

@@ -13,7 +13,7 @@ All automated tests live in the single Node built-in test-runner suite (`npm tes
 Covers template content and the installer rendering pipeline:
 
 - Rename completeness: `es-init` body present and renders per tool profile; `es-change-init` absent from all template content and rendered output.
-- Path hygiene: no hardcoded `docs/` project paths in template bodies; agents and the lifecycle skill resolve the docs folder from `easyspec-config.yaml`.
+- Path hygiene: no hardcoded `docs/` project paths in template bodies; the only allowed legacy reference is `docs/config.yaml` inside the migration flow. All docs paths resolve from `easyspec-config.yaml`.
 - Ownership-tag presence and frontmatter integrity at every write site.
 - `es-` prefix and kebab-case cross-reference consistency.
 - Per-profile rendering (copilot / opencode / claude-code), model selection, global vs. project scope install locations.
@@ -27,6 +27,7 @@ Unit tests for `src/config.mjs`:
 - Docs-folder resolution and derived `master/` / `changes/` paths; default-folder fallback; trailing-slash handling.
 - Malformed-config degradation: parses to `{}` and falls back to the default docs folder (documented behavior, no crash).
 - `scaffoldConfig`: creation, no-clobber of existing config, dry-run makes no writes.
+- Legacy migration: `readLegacyConfig` detects/parses `docs/config.yaml` only when it looks like an easyspec config (a third-party `docs/config.yaml` is ignored); `renderMigratedConfigYaml` preserves the body and emits exactly one `docs_folder: docs`; `migrateLegacyConfig` writes the root config and removes the legacy file; it never overwrites a root config; dry-run writes/deletes nothing.
 
 ## 3. Ownership Module — `tests/ownership.test.js`
 
@@ -41,6 +42,7 @@ Unit tests for `src/ownership.mjs`:
 CLI-level end-to-end coverage (drives the installer against temp workspaces; `tests/.fakehome/` serves as fixture HOME for global scope):
 
 - Project install (opencode profile, non-TTY): tags every written file, scaffolds root `easyspec-config.yaml` with default `docs_folder: easyspec-docs`, writes the install manifest, leaves a pre-existing `docs/` folder untouched.
+- Non-interactive legacy install: when only `docs/config.yaml` exists, no root config is scaffolded and the legacy config is preserved (migration requires interactive confirmation). A third-party `docs/config.yaml` that is not an easyspec config does not block normal scaffolding.
 - All three profiles produce only tagged files; install renders `es-init` and leaves no `es-change-init` artifact.
 - Global scope creates no project config; `--dry-run` writes nothing; re-install refreshes the manifest.
 - Custom `docs_folder` honored at the CLI level (no `easyspec-docs` created, existing config not clobbered); malformed config does not crash init.

@@ -21,8 +21,9 @@ Easyspec must never assume where a project's documentation lives. The docs locat
 - Initialization always presents and confirms the docs-folder choice; the default is accepted by simply confirming.
 - No easyspec-generated project content is ever written outside the configured docs folder.
 - Configuration is a single root-level file; multiple docs folders or nested configurations per project are not supported.
+- Legacy `docs/config.yaml` projects migrate in one confirmed step: the config moves to the root with `docs_folder: docs`; existing docs content is left in place.
 
 ## Out of Scope
 
-- Automatic migration of existing documentation into the configured folder.
+- Automatic migration of existing documentation content into a different docs folder (only the legacy config file is moved, with confirmation).
 - Non-YAML configuration formats or environment-variable-based configuration.

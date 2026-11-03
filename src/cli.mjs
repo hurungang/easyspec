@@ -6,8 +6,11 @@ import { multiselect, select, confirm, text, isCancel } from "@clack/prompts";
 import {
   CONFIG_FILE_NAME,
   DEFAULT_DOCS_FOLDER,
+  LEGACY_DOCS_FOLDER,
   getDocsFolder,
+  migrateLegacyConfig,
   readConfig,
+  readLegacyConfig,
   resolveDocsPaths,
   scaffoldConfig,
 } from "./config.mjs";
@@ -703,6 +706,21 @@ async function confirmDocsFolder(defaultFolder, dryRun) {
   return answer.trim();
 }
 
+async function confirmLegacyMigration(dryRun) {
+  if (dryRun) {
+    return true;
+  }
+  if (!process.stdin.isTTY) {
+    return false;
+  }
+  const answer = await confirm({
+    message:
+      "Found legacy docs/config.yaml. Migrate it to easyspec-config.yaml at the project root and keep 'docs' as the docs folder?",
+    initialValue: true,
+  });
+  return !isCancel(answer) && answer;
+}
+
 async function promptForAgents() {
   const selected = await multiselect({
     message: "Select target harness(es) — space to toggle, enter to confirm:",
@@ -827,12 +845,37 @@ export async function runCli(argv) {
     const { exists, config } = readConfig(args.workspace);
     let docsFolder = getDocsFolder(config);
     if (!exists) {
-      docsFolder = await confirmDocsFolder(docsFolder, args.dryRun);
-      const result = scaffoldConfig(args.workspace, docsFolder, { dryRun: args.dryRun });
-      if (result === "created") {
-        console.log(`[easyspec-init] created ${CONFIG_FILE_NAME} at ${args.workspace} (docs folder: ${docsFolder})`);
-      } else if (result === "dry-run") {
-        console.log(`[easyspec-init] would create ${CONFIG_FILE_NAME} at ${args.workspace} (docs folder: ${docsFolder})`);
+      const legacy = readLegacyConfig(args.workspace);
+      if (legacy.exists && legacy.isEasyspecConfig) {
+        const shouldMigrate = await confirmLegacyMigration(args.dryRun);
+        if (shouldMigrate) {
+          const result = migrateLegacyConfig(args.workspace, {
+            docsFolder: LEGACY_DOCS_FOLDER,
+            dryRun: args.dryRun,
+          });
+          if (result.migrated) {
+            docsFolder = result.docsFolder;
+            console.log(
+              `[easyspec-init] ${args.dryRun ? "would migrate" : "migrated"} legacy docs/config.yaml -> ${CONFIG_FILE_NAME} (docs folder: ${docsFolder})`
+            );
+          } else {
+            console.log(`[easyspec-init] legacy config detected but not migrated (${result.reason})`);
+            docsFolder = LEGACY_DOCS_FOLDER;
+          }
+        } else {
+          console.log(
+            "[easyspec-init] legacy docs/config.yaml detected; keeping the legacy layout (run /es-init to migrate interactively)"
+          );
+          docsFolder = LEGACY_DOCS_FOLDER;
+        }
+      } else {
+        docsFolder = await confirmDocsFolder(docsFolder, args.dryRun);
+        const result = scaffoldConfig(args.workspace, docsFolder, { dryRun: args.dryRun });
+        if (result === "created") {
+          console.log(`[easyspec-init] created ${CONFIG_FILE_NAME} at ${args.workspace} (docs folder: ${docsFolder})`);
+        } else if (result === "dry-run") {
+          console.log(`[easyspec-init] would create ${CONFIG_FILE_NAME} at ${args.workspace} (docs folder: ${docsFolder})`);
+        }
       }
     } else {
       console.log(`[easyspec-init] using existing ${CONFIG_FILE_NAME} (docs folder: ${docsFolder})`);

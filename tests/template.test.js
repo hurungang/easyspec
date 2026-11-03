@@ -312,14 +312,23 @@ describe("docs-folder migration integrity", () => {
     }
   }
 
-  it("no template content references hardcoded docs/ project paths", () => {
+  it("no template content assumes a hardcoded docs/ project path", () => {
     const offenders = [];
+    // The legacy `docs/config.yaml` path is allowed only in the two files that
+    // define the user-confirmed, one-step migration into the root config.
+    const legacyConfigAware = new Set([
+      path.join("prompts", "es-init.body.md"),
+      path.join("skills", "es-change-lifecycle", "SKILL.body.md"),
+    ]);
     for (const file of contentFiles(contentDir)) {
+      const rel = path.relative(contentDir, file);
       const content = readFile(file);
-      // A legacy hardcoded project path like `docs/config.yaml`, `docs/master/`,
-      // `docs/changes/` — the literal marker of the old layout.
-      if (/docs\/(config\.yaml|master|changes|\[)/.test(content)) {
-        offenders.push(path.relative(contentDir, file));
+      // Hardcoded master/changes paths are never allowed.
+      const hardcodedDocs = /docs\/(master|changes|\[)/.test(content);
+      // `docs/config.yaml` is only allowed in the legacy-migration definitions.
+      const hardcodedLegacyConfig = !legacyConfigAware.has(rel) && /docs\/config\.yaml/.test(content);
+      if (hardcodedDocs || hardcodedLegacyConfig) {
+        offenders.push(rel);
       }
     }
     assert.deepStrictEqual(offenders, [], `hardcoded docs/ paths in: ${offenders.join(", ")}`);
@@ -379,6 +388,49 @@ describe("CLI e2e", () => {
     assert.ok(output.includes("copied=16"), "should copy 16 files");
     assert.ok(output.includes("agent target(s): opencode"));
     assert.ok(output.includes("install scope: project"));
+  });
+
+  it("legacy docs/config.yaml is preserved and not replaced by scaffolded config in non-interactive installs", () => {
+    setupTmp();
+    fs.mkdirSync(path.join(tmpDir, "docs"), { recursive: true });
+    fs.writeFileSync(
+      path.join(tmpDir, "docs", "config.yaml"),
+      "project:\n  name: legacy-project\n",
+      "utf8"
+    );
+
+    const output = runCli("init --scope project --agent opencode --force --no-model-prompt 2>/dev/null");
+
+    assert.ok(output.includes("legacy docs/config.yaml detected"));
+    assert.ok(
+      !fs.existsSync(path.join(tmpDir, "easyspec-config.yaml")),
+      "must not scaffold a root config over a legacy project without confirmation"
+    );
+    assert.ok(
+      fs.existsSync(path.join(tmpDir, "docs", "config.yaml")),
+      "legacy config must be preserved"
+    );
+  });
+
+  it("another tool's docs/config.yaml does not block a normal easyspec install", () => {
+    setupTmp();
+    fs.mkdirSync(path.join(tmpDir, "docs"), { recursive: true });
+    fs.writeFileSync(
+      path.join(tmpDir, "docs", "config.yaml"),
+      "tool:\n  name: other-tool\n",
+      "utf8"
+    );
+
+    runCli("init --scope project --agent opencode --force --no-model-prompt 2>/dev/null");
+
+    assert.ok(
+      fs.existsSync(path.join(tmpDir, "easyspec-config.yaml")),
+      "should scaffold the root config when docs/config.yaml is not an easyspec config"
+    );
+    assert.ok(
+      fs.existsSync(path.join(tmpDir, "docs", "config.yaml")),
+      "third-party docs/config.yaml must be preserved"
+    );
   });
 
   it("opencode installed agents have no model or tools fields", () => {

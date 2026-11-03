@@ -38,7 +38,7 @@ flowchart TD
 
 **Step 0 rule**: every easyspec workflow reads the docs folder from the root config before doing any work. All paths derive from it — `<docs-folder>/master/**` and `<docs-folder>/changes/**` replace the legacy `docs/` layout.
 
-> Backward compatibility: projects still using the legacy `docs/` layout require a one-time manual re-init.
+> Backward compatibility: projects still using the legacy `docs/` layout get a one-step, user-confirmed migration — `docs/config.yaml` moves to the root as `easyspec-config.yaml` with `docs_folder: docs`, and existing docs stay in place.
 
 ## Initialization Flow (es-init)
 

@@ -6,9 +6,13 @@ import path from "node:path";
 import {
   CONFIG_FILE_NAME,
   DEFAULT_DOCS_FOLDER,
+  LEGACY_CONFIG_RELATIVE_PATH,
   getDocsFolder,
+  migrateLegacyConfig,
   parseConfigYaml,
   readConfig,
+  readLegacyConfig,
+  renderMigratedConfigYaml,
   resolveDocsPaths,
   scaffoldConfig,
 } from "../src/config.mjs";
@@ -107,5 +111,121 @@ source:
     const result = scaffoldConfig(ws, DEFAULT_DOCS_FOLDER, { dryRun: true });
     assert.strictEqual(result, "dry-run");
     assert.strictEqual(fs.existsSync(path.join(ws, CONFIG_FILE_NAME)), false);
+  });
+});
+
+describe("legacy config migration", () => {
+  const legacyYaml = `# Change Lifecycle Configuration
+# SUPERSEDED: legacy header
+
+project:
+  name: legacy-project
+  description: "Kept as-is"
+
+source:
+  backend: src/
+  tests:
+    - tests/
+
+conventions:
+  - keep existing values
+`;
+
+  function writeLegacy(ws, content = legacyYaml) {
+    const legacyPath = path.join(ws, LEGACY_CONFIG_RELATIVE_PATH);
+    fs.mkdirSync(path.dirname(legacyPath), { recursive: true });
+    fs.writeFileSync(legacyPath, content, "utf8");
+    return legacyPath;
+  }
+
+  it("readLegacyConfig detects and parses docs/config.yaml", () => {
+    const ws = tmpWorkspace();
+    writeLegacy(ws);
+    const legacy = readLegacyConfig(ws);
+    assert.strictEqual(legacy.exists, true);
+    assert.strictEqual(legacy.isEasyspecConfig, true);
+    assert.strictEqual(legacy.config.project.name, "legacy-project");
+    assert.strictEqual(legacy.config.source.backend, "src/");
+    assert.deepStrictEqual(legacy.config.source.tests, ["tests/"]);
+    assert.deepStrictEqual(legacy.config.conventions, ["keep existing values"]);
+  });
+
+  it("does not treat another tool's docs/config.yaml as an easyspec config", () => {
+    const ws = tmpWorkspace();
+    writeLegacy(ws, "tool:\n  name: other-tool\n  output: build/\n");
+    const legacy = readLegacyConfig(ws);
+    assert.strictEqual(legacy.exists, true);
+    assert.strictEqual(legacy.isEasyspecConfig, false);
+
+    const result = migrateLegacyConfig(ws);
+    assert.strictEqual(result.migrated, false);
+    assert.strictEqual(result.reason, "not-easyspec-config");
+    assert.ok(fs.existsSync(path.join(ws, LEGACY_CONFIG_RELATIVE_PATH)));
+    assert.strictEqual(fs.existsSync(path.join(ws, CONFIG_FILE_NAME)), false);
+  });
+
+  it("readLegacyConfig reports a missing legacy config without throwing", () => {
+    const ws = tmpWorkspace();
+    const legacy = readLegacyConfig(ws);
+    assert.strictEqual(legacy.exists, false);
+    assert.deepStrictEqual(legacy.config, {});
+    assert.strictEqual(legacy.content, null);
+  });
+
+  it("renderMigratedConfigYaml preserves the body and adds docs_folder: docs", () => {
+    const rendered = renderMigratedConfigYaml(legacyYaml);
+    assert.ok(rendered.startsWith("# easyspec:managed v1"));
+    assert.ok(rendered.includes("docs_folder: docs"));
+    assert.ok(rendered.includes("name: legacy-project"));
+    assert.ok(rendered.includes("keep existing values"));
+    assert.ok(!rendered.includes("SUPERSEDED"), "legacy header should be replaced");
+    assert.strictEqual((rendered.match(/docs_folder:/g) || []).length, 1);
+  });
+
+  it("migrateLegacyConfig writes the root config and removes docs/config.yaml", () => {
+    const ws = tmpWorkspace();
+    const legacyPath = writeLegacy(ws);
+
+    const result = migrateLegacyConfig(ws);
+    assert.strictEqual(result.migrated, true);
+    assert.strictEqual(result.reason, "migrated");
+    assert.strictEqual(result.docsFolder, "docs");
+
+    const rootPath = path.join(ws, CONFIG_FILE_NAME);
+    assert.ok(fs.existsSync(rootPath));
+    const rootConfig = readConfig(ws);
+    assert.strictEqual(rootConfig.exists, true);
+    assert.strictEqual(getDocsFolder(rootConfig.config), "docs");
+    assert.strictEqual(rootConfig.config.project.name, "legacy-project");
+    assert.strictEqual(fs.existsSync(legacyPath), false);
+  });
+
+  it("migrateLegacyConfig never overwrites an existing root config", () => {
+    const ws = tmpWorkspace();
+    writeLegacy(ws);
+    fs.writeFileSync(path.join(ws, CONFIG_FILE_NAME), "docs_folder: keep-me\n", "utf8");
+
+    const result = migrateLegacyConfig(ws);
+    assert.strictEqual(result.migrated, false);
+    assert.strictEqual(result.reason, "root-config-exists");
+    assert.ok(fs.readFileSync(path.join(ws, CONFIG_FILE_NAME), "utf8").includes("keep-me"));
+    assert.ok(fs.existsSync(path.join(ws, LEGACY_CONFIG_RELATIVE_PATH)));
+  });
+
+  it("migrateLegacyConfig dry-run writes and deletes nothing", () => {
+    const ws = tmpWorkspace();
+    writeLegacy(ws);
+
+    const result = migrateLegacyConfig(ws, { dryRun: true });
+    assert.strictEqual(result.migrated, true);
+    assert.strictEqual(fs.existsSync(path.join(ws, CONFIG_FILE_NAME)), false);
+    assert.ok(fs.existsSync(path.join(ws, LEGACY_CONFIG_RELATIVE_PATH)));
+  });
+
+  it("migrateLegacyConfig reports no-legacy-config when nothing exists", () => {
+    const ws = tmpWorkspace();
+    const result = migrateLegacyConfig(ws);
+    assert.strictEqual(result.migrated, false);
+    assert.strictEqual(result.reason, "no-legacy-config");
   });
 });

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "installedAt": "2026-11-03T01:10:53.765Z",
+  "installedAt": "2026-11-03T01:22:43.843Z",
   "files": [
     {
       "path": "agents/es-architect.md",
@@ -52,7 +52,7 @@
     },
     {
       "path": "commands/es-init.md",
-      "hash": "42a2f7c0721986031f2ec3d39bab79d9c84d810002f44bbd70378b02d1c4bb0d"
+      "hash": "f6af2dea5d8d9e753db31110c71fc8093c46f9fed575d5ca8988db98cf5bbae1"
     },
     {
       "path": "commands/es-master-review.md",
@@ -64,7 +64,7 @@
     },
     {
       "path": "skills/es-change-lifecycle/SKILL.md",
-      "hash": "923a46d76f4680a41893126acb62c6ab2f5bd77637efdd8186bc90c215e03cb7"
+      "hash": "1a3695aaa0c900d664301ff9558698ff9f75e8da9b66f77ee89c5c01bb16f52b"
     }
   ]
 }
