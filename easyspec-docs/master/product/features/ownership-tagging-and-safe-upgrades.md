@@ -12,7 +12,7 @@ Every artifact easyspec creates is explicitly marked as easyspec-owned, making t
   - For installs that predate the manifest and ownership tag, separately identifies untagged files matching easyspec's `es-` artifact naming and offers them for deletion with an explicit warning.
   - Presents each deletion candidate for user confirmation, with a per-file or batched option to keep any old file.
   - Skips declined deletions without error.
-- Files without the easyspec ownership tag are never deleted or overwritten automatically — including user files that happen to share a name with an easyspec artifact — except that files matching a known retired artifact name (`es-change-init`, `es-change-review`) are removed on upgrade.
+- Files without the easyspec ownership tag are never deleted or overwritten automatically — including user files that happen to share a name with an easyspec artifact.
 
 ## Value
 

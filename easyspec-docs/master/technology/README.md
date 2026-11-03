@@ -16,7 +16,7 @@ Master technology documentation for the easyspec kit. Easyspec is a no-build-ste
 ## Key Concepts
 
 - **Docs Folder Resolver** — all easyspec project paths derive from a configurable docs folder (default `easyspec-docs`); malformed config degrades silently to the default.
-- **Ownership Tag Contract** — every artifact the installer or `es-init` creates is tagged `<!-- easyspec:managed v1 -->` (YAML form `# easyspec:managed v1`); untagged files are never deleted automatically (except files matching a known retired name — `es-change-init`, `es-change-review` — which are removed on upgrade).
+- **Ownership Tag Contract** — every artifact the installer or `es-init` creates is tagged `<!-- easyspec:managed v1 -->` (YAML form `# easyspec:managed v1`); untagged files are never deleted automatically (pre-manifest easyspec files are only offered for deletion with explicit confirmation).
 - **Tag-verified upgrade cleanup** — retired artifacts are offered for confirmed deletion only when tag-verified on disk, either via a prior install manifest or known retired-artifact name patterns (e.g. the removed `es-change-init` and `es-change-review`). Untagged files matching a retired name are offered regardless of manifest.
 
 Source of truth for code layout lives in each module's Code Reference Map; module specs were derived from change `easyspec-docs/changes/archive/2026-11-02-easyspec-config-and-init-rework`.

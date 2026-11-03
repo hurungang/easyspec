@@ -10,7 +10,7 @@ The ownership module (`src/ownership.mjs`, introduced by the rework) implements 
 - **Tag forms** — HTML-comment form `<!-- easyspec:managed v1 -->` for markdown artifacts; YAML-comment form `# easyspec:managed v1` for YAML files such as `easyspec-config.yaml`.
 - **Embedding** — `embedTag` prepends the appropriate tag form to text content; it is applied at render/write time so tags survive into every target-tool format.
 - **Detection** — `hasTag` checks text content; `fileHasTag` checks a file on disk regardless of target-tool format. The upgrade-cleanup verifier relies on this to confirm a file is easyspec-managed before offering deletion.
-- **Safety invariant** — untagged files are never deleted or overwritten automatically, with one exception: files matching a known retired artifact name (`es-change-init`, `es-change-review`) are removed on upgrade. Legacy pre-manifest files matching easyspec's `es-` artifact naming (but not a retired name) are only offered for deletion with an explicit warning and confirmation.
+- **Safety invariant** — untagged files are never deleted or overwritten automatically; legacy pre-manifest files matching easyspec's `es-` artifact naming are only offered for deletion with an explicit warning and confirmation.
 
 ## Code Reference Map
 

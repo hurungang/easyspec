@@ -25,6 +25,6 @@ flowchart TD
 
 ## Safety Contract
 
-- Files **without** the ownership tag — including user files that share a name with an easyspec artifact — are never deleted or overwritten automatically, except that files matching a known retired name (`es-change-init`, `es-change-review`) are removed on upgrade. On pre-manifest installs, other untagged `es-*` artifacts are offered for deletion only through a separate, explicitly confirmed legacy path.
+- Files **without** the ownership tag — including user files that share a name with an easyspec artifact — are never deleted or overwritten automatically. On pre-manifest installs, untagged `es-*` artifacts are offered for deletion only through a separate, explicitly confirmed legacy path; untagged files matching a known retired name are offered the same way even when a manifest exists.
 - The ownership tag format is version-stable, so cleanup recognizes artifacts tagged by earlier easyspec versions.
 - Legacy uninstall (e.g. removing `es-change-init`/`es-change-review` artifacts from older installs) reuses tag detection and confirmation; when no manifest or tag exists, the explicit legacy confirmation path applies.

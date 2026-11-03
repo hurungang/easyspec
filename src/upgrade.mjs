@@ -13,13 +13,12 @@ import { fileHasTag } from "./ownership.mjs";
  *
  * Cleanup is conservative:
  * - Retired artifacts (specific, known names in `RETIRED_ARTIFACT_PATTERNS` such
- *   as `es-change-init` / `es-change-review`) are removed automatically on
- *   upgrade — interactively or not — with a clear log. These names are
- *   unambiguous easyspec artifacts.
- * - Tag-verified obsolete files (tagged, listed in the old manifest, no longer
- *   produced) and broad untagged `es-*` artifacts from pre-manifest installs are
- *   only removed after interactive confirmation; non-interactive runs list them
- *   without deleting.
+ *   as `es-change-init` / `es-change-review`), tag-verified obsolete files
+ *   (tagged, listed in the old manifest, no longer produced), and broad untagged
+ *   `es-*` artifacts from pre-manifest installs are all surfaced for deletion
+ *   and removed only after interactive confirmation (with a keep option).
+ * - Non-interactive runs list these candidates without deleting; `--dry-run`
+ *   lists everything and deletes nothing.
  * - Anything else — including user files that share an easyspec name — is never
  *   deleted or overwritten.
  */
@@ -128,7 +127,7 @@ function isRetiredName(relPath) {
 /**
  * Compute deletion candidates: files present on disk and not part of the new
  * artifact set, split into three buckets (see the module header):
- * - `retiredCandidates`: known retired names — auto-removed on upgrade.
+ * - `retiredCandidates`: known retired names (offered for confirmation).
  * - `candidates`: tag-verified obsolete files listed in the old manifest.
  * - `legacyCandidates`: untagged `es-*` artifacts from pre-manifest installs.
  */
@@ -153,7 +152,7 @@ export function computeCleanupCandidates(rootPath, newRelPaths, { layout = "tool
 
     if (retired) {
       // A known retired name (e.g. es-change-init, es-change-review) is an
-      // unambiguous easyspec artifact — auto-removed regardless of tag.
+      // unambiguous easyspec artifact — surfaced for confirmation regardless of tag.
       retiredCandidates.push(rel);
     } else if (inOldManifest && tagged) {
       candidates.push(rel);
@@ -171,11 +170,10 @@ export function computeCleanupCandidates(rootPath, newRelPaths, { layout = "tool
 
 /**
  * Run upgrade cleanup for an install root.
- * - Known retired names are removed automatically (interactive or not), with a
- *   clear log — they are unambiguous easyspec artifacts.
- * - Tag-verified obsolete files and broad `es-*` legacy files are removed only
- *   after interactive confirmation; non-interactive runs list them without
- *   deleting.
+ * - Interactive: every candidate (retired names, tag-verified obsolete files,
+ *   and broad `es-*` legacy files) is offered for deletion, one confirmation per
+ *   file with a keep option.
+ * - Non-interactive: candidates are listed but never deleted.
  * - `--dry-run` lists every candidate and deletes nothing.
  * Returns { manifestFound, candidates, retiredCandidates, legacyCandidates, deleted, kept }.
  */
@@ -189,24 +187,9 @@ export async function runUpgradeCleanup(rootPath, newRelPaths, { dryRun = false,
 
   const interactive = process.stdin.isTTY && !dryRun;
 
-  // Known retired names are auto-removed (interactive or not) — they are
-  // specific, unambiguous easyspec artifacts. Log clearly so it is never silent.
-  if (retiredCandidates.length > 0) {
-    if (dryRun) {
-      console.log(`[easyspec-init] upgrade cleanup: would remove ${retiredCandidates.length} retired easyspec file(s) under ${rootPath}:`);
-    } else {
-      console.log(`[easyspec-init] upgrade cleanup: removing ${retiredCandidates.length} retired easyspec file(s) under ${rootPath}:`);
-    }
-    for (const rel of retiredCandidates) {
-      if (dryRun) {
-        console.log(`  - ${rel}`);
-      } else {
-        fs.rmSync(path.join(rootPath, rel));
-        result.deleted.push(rel);
-        console.log(`  - removed ${rel}`);
-      }
-    }
-  }
+  // Untagged easyspec artifacts (retired names + broad es-* scan) are grouped
+  // into a single explicit confirmation.
+  const untagged = [...retiredCandidates, ...legacyCandidates];
 
   if (!interactive) {
     if (candidates.length > 0) {
@@ -219,16 +202,16 @@ export async function runUpgradeCleanup(rootPath, newRelPaths, { dryRun = false,
         result.kept.push(...candidates);
       }
     }
-    if (legacyCandidates.length > 0) {
+    if (untagged.length > 0) {
       const verb = dryRun ? "would offer for deletion" : "found (non-interactive run — nothing deleted)";
       console.log(
-        `[easyspec-init] upgrade cleanup: ${verb} ${legacyCandidates.length} untagged easyspec file(s) under ${rootPath}:`
+        `[easyspec-init] upgrade cleanup: ${verb} ${untagged.length} easyspec file(s) under ${rootPath}:`
       );
-      for (const rel of legacyCandidates) {
+      for (const rel of untagged) {
         console.log(`  - ${rel}`);
       }
       if (!dryRun) {
-        result.kept.push(...legacyCandidates);
+        result.kept.push(...untagged);
       }
     }
     return result;
@@ -265,27 +248,27 @@ export async function runUpgradeCleanup(rootPath, newRelPaths, { dryRun = false,
     }
   }
 
-  if (legacyCandidates.length > 0) {
+  if (untagged.length > 0) {
     console.log(
-      `[easyspec-init] upgrade cleanup: ${legacyCandidates.length} untagged easyspec file(s) have no ownership tag:`
+      `[easyspec-init] upgrade cleanup: ${untagged.length} easyspec file(s) from previous versions are no longer installed:`
     );
-    for (const rel of legacyCandidates) {
+    for (const rel of untagged) {
       console.log(`  - ${rel}`);
     }
 
-    const deleteAllLegacy = await confirm({
-      message: `Delete all ${legacyCandidates.length} untagged easyspec file(s)? They match easyspec's naming and are not part of the current install.`,
+    const deleteAllUntagged = await confirm({
+      message: `Delete all ${untagged.length} easyspec file(s)? They are no longer part of the current install.`,
       initialValue: false,
     });
-    if (!isCancel(deleteAllLegacy) && deleteAllLegacy) {
-      for (const rel of legacyCandidates) {
+    if (!isCancel(deleteAllUntagged) && deleteAllUntagged) {
+      for (const rel of untagged) {
         fs.rmSync(path.join(rootPath, rel));
         result.deleted.push(rel);
       }
     } else {
-      for (const rel of legacyCandidates) {
+      for (const rel of untagged) {
         const answer = await confirm({
-          message: `Delete untagged easyspec file ${rel}?`,
+          message: `Delete easyspec file ${rel}?`,
           initialValue: false,
         });
         if (!isCancel(answer) && answer) {

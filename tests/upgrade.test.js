@@ -212,15 +212,15 @@ describe("upgrade cleanup", () => {
     assert.deepStrictEqual(candidates, [legacyRel]);
   });
 
-  it("non-interactive run auto-removes retired names", async () => {
+  it("non-interactive run lists retired names without deleting", async () => {
     seedRetired(true);
     const toolRoot = path.join(tmpDir, ".opencode");
     const target = path.join(toolRoot, "commands", "es-change-init.md");
     const result = await runUpgradeCleanup(toolRoot, []);
     assert.deepStrictEqual(result.retiredCandidates, ["commands/es-change-init.md"]);
-    assert.deepStrictEqual(result.deleted, ["commands/es-change-init.md"]);
-    assert.deepStrictEqual(result.kept, []);
-    assert.strictEqual(fs.existsSync(target), false, "retired file is auto-removed");
+    assert.deepStrictEqual(result.deleted, []);
+    assert.deepStrictEqual(result.kept, ["commands/es-change-init.md"]);
+    assert.strictEqual(fs.existsSync(target), true, "non-interactive run deletes nothing");
   });
 
   it("dry-run cleanup deletes nothing", async () => {
@@ -281,7 +281,7 @@ describe("pre-manifest legacy cleanup", () => {
     assert.deepStrictEqual(legacyCandidates, []);
   });
 
-  it("non-interactive cleanup auto-removes retired names but keeps broad es-* files", async () => {
+  it("non-interactive cleanup lists retired and legacy candidates without deleting", async () => {
     seedLegacy();
     const toolRoot = path.join(tmpDir, ".opencode");
     const retiredTarget = path.join(toolRoot, "commands", "es-change-init.md");
@@ -292,13 +292,14 @@ describe("pre-manifest legacy cleanup", () => {
       "commands/es-change-init.md",
       "commands/es-change-review.md",
     ]);
-    assert.deepStrictEqual(result.deleted, [
+    assert.deepStrictEqual(result.deleted, []);
+    assert.deepStrictEqual(result.kept, [
       "commands/es-change-init.md",
       "commands/es-change-review.md",
+      "commands/es-old-helper.md",
     ]);
-    assert.deepStrictEqual(result.kept, ["commands/es-old-helper.md"]);
-    assert.strictEqual(fs.existsSync(retiredTarget), false, "retired file auto-removed");
-    assert.strictEqual(fs.existsSync(helperTarget), true, "non-retired es-* file kept");
+    assert.strictEqual(fs.existsSync(retiredTarget), true, "non-interactive deletes nothing");
+    assert.strictEqual(fs.existsSync(helperTarget), true);
   });
 });
 
@@ -339,7 +340,7 @@ describe("retired names and flat-layout roots", () => {
     return path.join(homeDir, ".config", "Code", "User", "prompts");
   }
 
-  it("copilot global install records a separate prompts manifest and auto-removes stale retired prompts", { skip: process.platform === "win32" }, () => {
+  it("copilot global install records a separate prompts manifest and keeps stale retired prompts non-interactively", { skip: process.platform === "win32" }, () => {
     setupTmp();
     const promptDir = copilotUserPromptDir(fakeHome);
     assert.ok(promptDir, "unable to resolve copilot user prompt dir");
@@ -350,8 +351,9 @@ describe("retired names and flat-layout roots", () => {
 
     runCli("init --scope global --agent copilot --force --no-model-prompt 2>/dev/null");
 
-    // The stale retired prompt is auto-removed even in a non-interactive run.
-    assert.strictEqual(fs.existsSync(stale), false, "stale retired prompt should be auto-removed");
+    // Non-interactive run deletes nothing; the stale retired prompt is kept but
+    // the external prompts root still gets its own manifest.
+    assert.strictEqual(fs.existsSync(stale), true, "non-interactive run must not delete");
 
     const manifest = readManifest(promptDir);
     assert.ok(manifest, "copilot global prompts dir should get its own manifest");
