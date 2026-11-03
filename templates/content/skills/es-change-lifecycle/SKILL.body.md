@@ -68,7 +68,7 @@ Master docs live in `<docs-folder>/master/` with the following structure:
 | Folder | Purpose | Owner Agent |
 |--------|---------|-------------|
 | `<docs-folder>/master/product/` | Overall product specification; feature-based product specs | es-product-owner |
-| `<docs-folder>/master/ux/` | Complete product UI HTML prototype (single mock of whole product) | es-ux-specialist |
+| `<docs-folder>/master/ux/` | Product UI prototype — hub `prototype/index.html` plus module pages once the prototype grows (see Master Doc Modularization) | es-ux-specialist |
 | `<docs-folder>/master/architecture/` | System architecture Mermaid diagrams; module-level only when needed | es-architect |
 | `<docs-folder>/master/data-model/` | Overall entity model (tech-agnostic UML/ER); no schema code | es-database-designer |
 | `<docs-folder>/master/technology/` | Master technical specification with code function reference map | es-developer |
@@ -76,6 +76,109 @@ Master docs live in `<docs-folder>/master/` with the following structure:
 | `<docs-folder>/master/deployment/` | Master deployment instruction | es-developer |
 | `<docs-folder>/master/operations/` | Master operation instruction | es-developer |
 | `<docs-folder>/master/reference/` | Reference docs: background context, glossary, API references | any agent |
+
+Every area has **one stable hub file** as its entry point (for example `overview.md`, `README.md`, or `index.html`). By default the hub also holds the content. Modules are added beneath the hub only when the area grows past the modularization criteria below — never pre-split an area that is still small.
+
+---
+
+## Master Doc Modularization
+
+Master docs start as a single file per area and are split only when a file has grown large **and** contains multiple independent modules. The goal is merge-friendly docs: two changes touching different modules should edit different files, not fight over one giant file. Smaller module files also cut agent context cost — an update reads and rewrites only the module it touches.
+
+### When to split
+
+Split a master doc only when **all** of these are true:
+
+1. **Size** — the file exceeds the soft limit below, or will within one or two changes
+2. **Multiple modules** — the content has at least two clearly separable modules/domains/screens
+3. **Merge pressure** — future changes are likely to touch different modules independently
+
+| Artifact | Soft limit (evaluate) | Hard limit (split now) |
+|----------|-----------------------|------------------------|
+| Markdown master doc | 500 lines / 25 KB | 800 lines / 40 KB |
+| HTML master prototype | 1,500 lines / 120 KB | 2,500 lines / 200 KB |
+| Code Reference Map table | 150 rows | 250 rows |
+
+**Never split when:**
+- The file is one cohesive topic with no natural seam
+- Only one module exists — a large single-module file is still easier to merge than a fake split
+- Splitting would duplicate content instead of relocating it
+- The file is large only because of prose that should be trimmed instead
+- A module would be under ~80 lines — keep it in its parent
+
+**Do not split ahead of need.** A 900-line file with one module stays one file. A 400-line file with three unrelated modules may split early. Judgment beats thresholds.
+
+### Layout pattern
+
+Every modularized area keeps a **stable hub file** as its entry point, with modules beneath it:
+
+```
+<docs-folder>/master/<area>/
+├── overview.md                 # hub: purpose, short summary per module, links
+└── modules/
+    ├── <module-a>.md           # one module per file
+    └── <module-b>.md
+```
+
+Rules:
+- **The hub is the source of truth for navigation.** Every module is linked from the hub; every module links back to the hub.
+- Use relative Markdown links, e.g. `modules/<module-a>.md`.
+- Keep the tree shallow — the deepest allowed path is `<area>/modules/<module>/<file>.md`. No nesting beyond that (`modules/a/b/c.md` is wrong).
+- One module per file — never split a single cohesive module into section files.
+- Relocating content must not leave duplicate copies. Remove the original section and replace it with a one-line summary plus a link.
+- The hub must remain useful on its own: state what the area covers and give a one-line summary of each module.
+- Keep hub file names stable (`overview.md`, `README.md`, `index.html`) so existing links never break.
+
+### Area-specific guidance
+
+**product/** — `product-vision.md` is the hub. Split features into `product/features/<feature>.md` (the default shape). Create a feature-group hub only when `features/` itself outgrows the threshold.
+
+**ux/** — see *Master prototype modularization* below.
+
+**architecture/** — `system-overview.md` is the hub with the system diagram. Split subsystem detail into `architecture/modules/<module>/architecture.md` when the diagram set outgrows the threshold or changes touch different subsystems.
+
+**data-model/** — `overview.md` is the hub with the cross-domain relationship map. Split domain diagrams into `data-model/modules/<domain>/entities.md`. The overview keeps the cross-domain map and a one-line summary per domain.
+
+**technology/** — `README.md` is the hub. Split by module into `technology/modules/<module>/tech-spec.md`. A Code Reference Map over 250 rows must be split by module — never keep one table spanning unrelated modules.
+
+**qa/** — `testing-strategy.md` is the hub. Split test plans by module into `qa/test-plans/<module>-test-plan.md`. `qa/demo-cases.md` stays one file until it outgrows the threshold, then splits by feature group with a `qa/demo-cases/` hub.
+
+**deployment/ and operations/** — keep a `README.md` hub. Split by environment or service only when the file outgrows the threshold and covers independent services.
+
+### Master prototype modularization
+
+The master prototype is the most common file to outgrow a single page. Split it when **either**:
+- The file exceeds 1,500 lines / 120 KB, or
+- It contains 3+ top-level screens/modules and future changes will touch them independently
+
+Structure:
+
+```
+<docs-folder>/master/ux/
+└── prototype/
+    ├── index.html              # hub: shell, global nav, links to module pages
+    ├── modules/
+    │   ├── <module-a>.html
+    │   └── <module-b>.html
+    └── shared/
+        ├── styles.css          # design tokens + component CSS
+        └── app.js              # nav helpers, toasts, modals
+```
+
+Rules:
+- `prototype/index.html` must remain a working prototype of the whole product: global navigation, a landing screen, and links to every module page.
+- Each module page must open directly from disk (`file://`) — no server. Use only relative `<link rel="stylesheet">` and classic `<script src>`; no `fetch`, no ES modules, no build step.
+- Each module page loads the shared stylesheet plus its own screen markup/JS. Never copy the entire stylesheet inline into every module.
+- Keep module pages independent: editing one module must not require editing another.
+- Change prototypes stay single-file at `<docs-folder>/changes/<name>/prototype/index.html` — only the master prototype modularizes.
+
+### Merge-friendly authoring rules
+
+- Keep headings and section order stable — append new modules to the hub index instead of reordering.
+- Update the smallest file that owns the content; do not rewrite the hub unless navigation changed.
+- Never reformat or re-wrap unrelated content while updating a module — it creates pointless merge conflicts.
+- When a change spans multiple modules, edit each module file separately and update the hub once.
+- Record every split in the change summary so reviewers can follow the new layout.
 
 ---
 
@@ -301,36 +404,43 @@ When creating test plans for changes that modify database schema:
 
 When updating master docs after a change is implemented:
 
+After updating an area, evaluate it against **Master Doc Modularization**. If a touched file is over the soft limit and covers multiple modules, split it as part of this update and record the split in the change summary. Otherwise leave the structure alone — do not reorganize docs that are still healthy.
+
 ### `<docs-folder>/master/product/`
 - `product-vision.md` — Update if strategic direction changed
 - `features/` — Update or create feature-level spec file
 - Keep feature specs concise, business-language, no implementation details
 
 ### `<docs-folder>/master/ux/`
-- Maintain a **single** `prototype/index.html` that mocks the FULL product
-- Update the prototype to reflect new UI flows from the change
-- Keep it self-contained (inline CSS/JS), openable without a server
+- Keep `<docs-folder>/master/ux/prototype/index.html` as the hub that mocks the FULL product and links to every module page
+- Update the specific module page touched by the change; update the hub only for landing/navigation changes
+- Start with a single `prototype/index.html`; split into `prototype/modules/<module>.html` when the modularization criteria are met
+- Every page must remain openable directly in a browser from disk (no server, no fetch)
 
 ### `<docs-folder>/master/architecture/`
-- `system-overview.md` — Update if overall system architecture changed
+- `system-overview.md` — Update if overall system architecture changed; this is the hub
 - `modules/` — Update module-level diagrams only if needed
 - Keep diagrams to max 15 nodes, Mermaid only
+- Split subsystem detail into `modules/<module>/architecture.md` when the criteria are met; keep the system diagram in the hub
 
 ### `<docs-folder>/master/data-model/`
-- `overview.md` — Update entity-relationship diagram to reflect new entities/relations (Mermaid `erDiagram`)
+- `overview.md` — Update entity-relationship diagram to reflect new entities/relations (Mermaid `erDiagram`); this is the hub
 - `modules/<module>/entities.md` — Update module entity list (names only, no schema code)
 - Show business entities and relationships only — no storage implementation details
+- Split domains into `modules/<domain>/entities.md` when the criteria are met; keep the cross-domain map in the hub
 
 ### `<docs-folder>/master/technology/`
-- `README.md` — Overall tech spec index
+- `README.md` — Overall tech spec index; this is the hub
 - `modules/<module>/tech-spec.md` — Module-level tech spec with code reference map
 - Update the Code Reference Map table whenever code locations change
 - This is the **developer's navigation aid** — accuracy is critical
+- Split a Code Reference Map over 250 rows by module; one table must never span unrelated modules
 
 ### `<docs-folder>/master/qa/`
-- `testing-strategy.md` — Update if overall strategy changed
+- `testing-strategy.md` — Update if overall strategy changed; this is the hub
 - `test-plans/<module>-test-plan.md` — Update module-level test plan
 - Reference actual test files using paths from `easyspec-config.yaml` `source.tests`
+- Split demo cases by feature group when `demo-cases.md` outgrows the threshold
 
 ### `<docs-folder>/master/deployment/`
 - Update relevant deployment instruction files
