@@ -49,6 +49,8 @@ Before building any new prototype, always check for existing prototypes to extra
 1. `<docs-folder>/master/ux/` — canonical master prototypes for the product (highest authority)
 2. `<docs-folder>/changes/*/prototype/index.html` — prototypes from other change sets (same product, may be more recent)
 
+**Master prototype layout:** the master prototype may be a single `prototype/index.html` or a modular set (`prototype/index.html` hub + `prototype/modules/<module>.html` + `prototype/shared/`). Read the hub first, then the module page(s) relevant to the task. When updating a modularized master prototype, edit the owning module page and touch the hub only for navigation or shared-style changes — never duplicate content across pages.
+
 **What to reuse:**
 - CSS custom properties / design tokens (colours, typography, spacing, border-radius, shadows)
 - Navigation chrome and overall page layout structure

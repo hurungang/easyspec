@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "installedAt": "2026-11-02T03:03:34.523Z",
+  "installedAt": "2026-11-03T01:10:53.765Z",
   "files": [
     {
       "path": "agents/es-architect.md",
@@ -28,11 +28,43 @@
     },
     {
       "path": "agents/es-ux-specialist.md",
-      "hash": "05bfd92717726817d04109824cd75712a1f66d41146730f8cd71a5a956f34ec6"
+      "hash": "cf0b05220bba408886f99fe9be831f95bf6c9e06ebac8016a085626e13bfdb0f"
+    },
+    {
+      "path": "commands/es-change-apply.md",
+      "hash": "39eb32b8738fed9cc649a72167c4d95647c9b24a947081aff9e98dfcc76cd168"
+    },
+    {
+      "path": "commands/es-change-fix.md",
+      "hash": "4db90d7bbeb1c5f2135e0c677b39c87cc85ce26efcb79490d6288b54d3456db1"
+    },
+    {
+      "path": "commands/es-change-propose.md",
+      "hash": "2ccc814d784cb9694a944b8fd900d24fe78331c4fab76252170d1720e75d1931"
+    },
+    {
+      "path": "commands/es-change-refinement.md",
+      "hash": "378b02245804764e9400c52c6b33b48ac300bdb7af72c56f69bc871e0b7ac02b"
+    },
+    {
+      "path": "commands/es-change-update-master.md",
+      "hash": "1c619751d3dd0d3aeae53486c764eff06d9d3829deee69ee3f602fa45664c2cd"
     },
     {
       "path": "commands/es-init.md",
       "hash": "42a2f7c0721986031f2ec3d39bab79d9c84d810002f44bbd70378b02d1c4bb0d"
+    },
+    {
+      "path": "commands/es-master-review.md",
+      "hash": "d79e814f94712917df71b39507beedfcbaf06e9f84edb4fa58028ea8ff28e61b"
+    },
+    {
+      "path": "commands/es-quick-fix.md",
+      "hash": "425b3a2863e39e19e88fe8afbd9c119950083c66e0c1c3fae041aea37921ce05"
+    },
+    {
+      "path": "skills/es-change-lifecycle/SKILL.md",
+      "hash": "923a46d76f4680a41893126acb62c6ab2f5bd77637efdd8186bc90c215e03cb7"
     }
   ]
 }

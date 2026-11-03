@@ -3,6 +3,7 @@ name: es-change-apply
 description: 'es-change-apply command'
 ---
 
+<!-- easyspec:managed v1 -->
 Implement a change by orchestrating the developer and es-tester agents against the prepared change docs.
 
 **Input**: Optionally specify a change name (e.g., `/es-change-apply add-dark-mode`). If omitted, list available changes and ask the user to select.
@@ -15,7 +16,7 @@ If a change name is provided, use it.
 
 Otherwise, list available changes:
 ```
-Get-ChildItem docs/changes/ -Directory | Where-Object { $_.Name -ne 'archive' }
+Get-ChildItem <docs-folder>/changes/ -Directory | Where-Object { $_.Name -ne 'archive' }
 ```
 
 If only one active change exists, auto-select it. If multiple, ask the user to select.
@@ -26,7 +27,7 @@ Announce: **"Implementing change: `<name>`"**
 
 ## Step 2: Read Change Context
 
-Read all existing files in `docs/changes/<name>/`:
+Read all existing files in `<docs-folder>/changes/<name>/`:
 1. `.change.yaml` — Check status and scope
 2. `prd.md` — Product requirements and acceptance criteria
 3. `spec-change.md` — What product spec areas are affected
@@ -38,7 +39,7 @@ Read all existing files in `docs/changes/<name>/`:
 
 Also read:
 - `.github/skills/es-change-lifecycle/SKILL.md` for document format conventions
-- `docs/config.yaml` for project source paths, tech stack, and conventions
+- `easyspec-config.yaml` for project source paths, tech stack, and conventions
 
 ---
 
@@ -46,7 +47,7 @@ Also read:
 
 **If `implementation-plan.md` is missing or has no tasks**:
 Delegate to **es-developer agent** to create it:
-> "Read all change docs in `docs/changes/<name>/` and `docs/config.yaml`. Create `docs/changes/<name>/implementation-plan.md` with an ordered task list, phases, and clear done conditions for each task. Load `.github/skills/es-change-lifecycle/SKILL.md`."
+> "Read all change docs in `<docs-folder>/changes/<name>/` and `easyspec-config.yaml`. Create `<docs-folder>/changes/<name>/implementation-plan.md` with an ordered task list, phases, and clear done conditions for each task. Load `.github/skills/es-change-lifecycle/SKILL.md`."
 
 **If any prerequisite docs are missing** (prd.md or tech-spec.md not found):
 Pause and tell the user:
@@ -90,37 +91,37 @@ If `.change.yaml` shows `has_db_changes: true` and schema files haven't been upd
 
 **5a. Validate data-model.md has attribute-level ER diagrams**
 
-Before delegating schema work, read `docs/changes/<name>/data-model.md` and check:
+Before delegating schema work, read `<docs-folder>/changes/<name>/data-model.md` and check:
 - Each new entity has a Mermaid `erDiagram` block
 - Each erDiagram includes **attribute lines** inside the entity block (id, name, status/type enums, foreign keys, booleans) — not just entity names
 - Relationships have cardinality notation (e.g. `||--o{`) and labels
 
 If the ER diagrams are missing attribute lines (i.e. they only name the entity with no fields listed), delegate back to **es-database-designer agent** to enrich them first:
-> "Read `docs/changes/<name>/data-model.md`. For each entity in the New Entities section, update the Mermaid erDiagram blocks to include key attribute lines inside each entity block. Use generic types (uuid, string, enum, boolean, int, datetime, json) — not database-specific types. Include: primary key (id), all business-meaningful fields (name, status, type, boolean flags), and foreign-key references (as uuid fields). Do NOT add SQL, ORM code, or constraints. After updating, verify every relationship has a cardinality label."
+> "Read `<docs-folder>/changes/<name>/data-model.md`. For each entity in the New Entities section, update the Mermaid erDiagram blocks to include key attribute lines inside each entity block. Use generic types (uuid, string, enum, boolean, int, datetime, json) — not database-specific types. Include: primary key (id), all business-meaningful fields (name, status, type, boolean flags), and foreign-key references (as uuid fields). Do NOT add SQL, ORM code, or constraints. After updating, verify every relationship has a cardinality label."
 
 Wait for the enriched data-model.md before proceeding.
 
 **5b. Update schema/model files**
 
 Delegate to **es-database-designer agent**:
-> "Read the enriched `docs/changes/<name>/data-model.md` and `docs/config.yaml` (for schema file paths). Update the project's schema/model files as described in the data-model.md 'Schema File References' section. Follow the project's schema management convention — do NOT write migration scripts manually; use the project's schema tooling to generate them."
+> "Read the enriched `<docs-folder>/changes/<name>/data-model.md` and `easyspec-config.yaml` (for schema file paths). Update the project's schema/model files as described in the data-model.md 'Schema File References' section. Follow the project's schema management convention — do NOT write migration scripts manually; use the project's schema tooling to generate them."
 
 Wait for completion before proceeding to implementation.
 
-**Note**: Master data-model docs (`docs/master/data-model/`) are updated by `/es-change-update-master` — do NOT update them here.
+**Note**: Master data-model docs (`<docs-folder>/master/data-model/`) are updated by `/es-change-update-master` — do NOT update them here.
 
 ---
 
 ## Step 6: Delegate Implementation to es-Developer Agent
 
 Delegate to **es-developer agent** with full context:
-> "Implement the change `<name>`. Read all change docs from `docs/changes/<name>/`:
+> "Implement the change `<name>`. Read all change docs from `<docs-folder>/changes/<name>/`:
 > - `prd.md` for requirements
 > - `tech-spec.md` for technical approach and Code Reference Map
 > - `implementation-plan.md` for ordered tasks
 > - `architecture.md` (if exists) for component changes
 >
-> Also read `docs/config.yaml` for project source paths and conventions.
+> Also read `easyspec-config.yaml` for project source paths and conventions.
 >
 > Work through each unchecked task `- [ ]` in `implementation-plan.md` in order:
 > 1. Implement the task
@@ -203,7 +204,7 @@ If migration had to be applied, also note:
 
 **Before writing any tests**, the conductor must review the test plan for coverage quality.
 
-Read `docs/changes/<name>/test-plan.md` and evaluate:
+Read `<docs-folder>/changes/<name>/test-plan.md` and evaluate:
 
 **Coverage quality checklist:**
 - [ ] Every feature in `prd.md` has at least one E2E scenario
@@ -216,14 +217,14 @@ Read `docs/changes/<name>/test-plan.md` and evaluate:
 **If the test plan is shallow or missing scenarios:**
 
 Delegate back to **es-tester agent** to expand it:
-> "The test plan for `<name>` needs deeper coverage. Read `docs/changes/<name>/prd.md` to enumerate every feature and acceptance criterion. For each feature, define:
+> "The test plan for `<name>` needs deeper coverage. Read `<docs-folder>/changes/<name>/prd.md` to enumerate every feature and acceptance criterion. For each feature, define:
 > 1. The full user journey (step-by-step actions a user takes)
 > 2. At least one happy-path E2E scenario with specific UI interactions and assertions
 > 3. At least one error/edge-case scenario
 > 4. Backend test cases for each API endpoint involved
 > 5. Frontend component test cases for each UI element involved
 >
-> Update `docs/changes/<name>/test-plan.md` with expanded scenarios. Do NOT write code — this is planning only."
+> Update `<docs-folder>/changes/<name>/test-plan.md` with expanded scenarios. Do NOT write code — this is planning only."
 
 **Do not proceed to test implementation until the test plan passes all coverage checklist items.**
 
@@ -237,13 +238,13 @@ After developer reports implementation complete AND test plan is approved:
 
 Delegate to **es-tester agent**:
 > "The change `<name>` has been implemented. Read:
-> - `docs/changes/<name>/test-plan.md` for coverage areas and scenarios (the approved plan)
-> - `docs/changes/<name>/prd.md` for acceptance criteria
-> - `docs/config.yaml` for test directory paths
+> - `<docs-folder>/changes/<name>/test-plan.md` for coverage areas and scenarios (the approved plan)
+> - `<docs-folder>/changes/<name>/prd.md` for acceptance criteria
+> - `easyspec-config.yaml` for test directory paths
 >
 > Create or update tests in **all three test layers**:
 >
-> 1. **Backend tests** — pytest files in the backend test directory (`source.tests` in `docs/config.yaml`). Cover service logic, API endpoints, and data model operations. Each scenario in the test plan must have a corresponding test.
+> 1. **Backend tests** — pytest files in the backend test directory (`source.tests` in `easyspec-config.yaml`). Cover service logic, API endpoints, and data model operations. Each scenario in the test plan must have a corresponding test.
 >
 > 2. **Frontend component tests** — Vitest files in `frontend/src/__tests__/`. Cover each new or modified React component/page: renders correctly, handles loading/error states, and responds to user interaction (clicks, form input).
 >
@@ -254,7 +255,7 @@ Delegate to **es-tester agent**:
 > - Report pass/fail counts
 > - Fix any failures before proceeding
 >
-> When all three layers pass, update `docs/changes/<name>/test-plan.md` Test File References section with paths to all created test files (backend, frontend, e2e)."
+> When all three layers pass, update `<docs-folder>/changes/<name>/test-plan.md` Test File References section with paths to all created test files (backend, frontend, e2e)."
 
 ---
 
@@ -271,19 +272,19 @@ Delegate to **es-developer agent** to review and update:
 
 > "The implementation and tests for `<name>` are complete. Now review the change documentation to ensure accuracy.
 >
-> 1. **Review `docs/changes/<name>/tech-spec.md`**:
+> 1. **Review `<docs-folder>/changes/<name>/tech-spec.md`**:
 >    - Verify the Code Reference Map matches actual file paths and component names
 >    - Add any new API endpoints, functions, or components created during implementation
 >    - Update technical approach if implementation deviated from the original plan
 >    - Ensure all code references are accurate and complete
 >
-> 2. **Review `docs/changes/<name>/test-plan.md`**:
+> 2. **Review `<docs-folder>/changes/<name>/test-plan.md`**:
 >    - Verify Test File References section lists all actual test files created
 >    - Ensure all scenarios described match the implemented tests
 >    - Add any additional test coverage that was implemented
 >    - Update file paths if test files were organized differently than planned
 >
-> 3. **Review `docs/changes/<name>/implementation-plan.md`**:
+> 3. **Review `<docs-folder>/changes/<name>/implementation-plan.md`**:
 >    - Verify all `- [x]` tasks accurately reflect what was completed
 >    - If any tasks were skipped or changed during implementation, update task descriptions to match reality
 >
@@ -299,16 +300,16 @@ After documentation is reviewed and updated, delegate to **es-tester agent** to 
 
 > "The tests for `<name>` are all passing. Now curate a demo-cases file.
 >
-> Read `docs/changes/<name>/test-plan.md` and `e2e/tests/` to understand what test cases exist.
+> Read `<docs-folder>/changes/<name>/test-plan.md` and `e2e/tests/` to understand what test cases exist.
 >
 > Select **one best representative E2E test per feature** — the one that shows the most user-visible behaviour. Skip tests that only validate one small detail (e.g. 'page does not redirect to login') or tests that duplicate the same flow.
 >
-> Create `docs/changes/<name>/demo-cases.md` with this format:
+> Create `<docs-folder>/changes/<name>/demo-cases.md` with this format:
 >
 > ```markdown
 > # Demo Cases: <change-name>
 > <!-- Curated representative scenarios for product demo -->
-> <!-- Use with: /demo-app --cases docs/changes/<name>/demo-cases.md -->
+> <!-- Use with: /demo-app --cases <docs-folder>/changes/<name>/demo-cases.md -->
 >
 > ## Grep Patterns
 > <!-- One Playwright test title per line (must match the test's describe + test name exactly) -->
@@ -330,7 +331,7 @@ After documentation is reviewed and updated, delegate to **es-tester agent** to 
 > - 1 test per distinct feature — never duplicate a flow
 > - The grep pattern must be `<describe block name> > <test name>` (exact Playwright title format — use `>` not `›`)"
 
-Announce: "✅ Demo cases curated — `docs/changes/<name>/demo-cases.md` created."
+Announce: "✅ Demo cases curated — `<docs-folder>/changes/<name>/demo-cases.md` created."
 
 ---
 
@@ -382,12 +383,12 @@ Check for these files in `.github/prompts/`:
 - `demo-app.prompt.md`
 
 For each file:
-- If it **does not exist** → create it at `.github/prompts/<name>.prompt.md` with commands tailored to this project's stack (read `docs/config.yaml` for source paths, ports, and tech stack)
+- If it **does not exist** → create it at `.github/prompts/<name>.prompt.md` with commands tailored to this project's stack (read `easyspec-config.yaml` for source paths, ports, and tech stack)
 - If it **exists but is outdated** (e.g., wrong ports, wrong test commands, missing scenarios added by this change) → update the relevant sections in place
 
 **Scenarios to keep current in `demo-app.prompt.md`**: After any change that adds new testable features or E2E scenarios, add them to the "Available scenarios" list. Also ensure the prompt supports `--cases <file>` to load demo-cases.md files (see demo-app creation requirements below).
 
-**Test commands to keep current in `test-app.prompt.md`**: If `docs/config.yaml` or the project test setup changes (new test directories, changed ports), update accordingly. The prompt must enforce: `--filter` alone (no layer flag) runs **all 3 layers** with the filter — only `--filter` combined with a layer flag restricts to one layer.
+**Test commands to keep current in `test-app.prompt.md`**: If `easyspec-config.yaml` or the project test setup changes (new test directories, changed ports), update accordingly. The prompt must enforce: `--filter` alone (no layer flag) runs **all 3 layers** with the filter — only `--filter` combined with a layer flag restricts to one layer.
 
 **Requirements for `start-app.prompt.md`** — when creating or updating this file, it must:
 1. **Distinguish dev vs preview ports**: port 5173 = Vite dev server (correct); port 4173 = Vite preview server (wrong). Never treat port 4173 as the frontend being ready — always target port 5173 for the dev server.
@@ -443,21 +444,21 @@ After all tests pass and slash commands are verified, ask the user:
 
 All tests are passing. Would you like to see a live demo of the **<change name>** changes?
 
-The demo will use the curated scenarios from `docs/changes/<name>/demo-cases.md`
+The demo will use the curated scenarios from `<docs-folder>/changes/<name>/demo-cases.md`
 (one representative test per feature — focused, no repetition).
 
-- **Yes, full demo** → `/demo-app --cases docs/changes/<name>/demo-cases.md --speed normal`
+- **Yes, full demo** → `/demo-app --cases <docs-folder>/changes/<name>/demo-cases.md --speed normal`
 - **Yes, specific feature** → Tell me which scenario (e.g., "notifications", "scheduling")
-- **Yes, let me control it** → `/demo-app --cases docs/changes/<name>/demo-cases.md --pause`
+- **Yes, let me control it** → `/demo-app --cases <docs-folder>/changes/<name>/demo-cases.md --pause`
 - **No thanks** → Proceed to `/es-change-update-master` to update master product docs
 
 Type your choice or just say "demo" to start the full demo.
 ```
 
 If the user says yes (any variant):
-- Full demo → invoke `/demo-app --cases docs/changes/<name>/demo-cases.md --speed normal`
+- Full demo → invoke `/demo-app --cases <docs-folder>/changes/<name>/demo-cases.md --speed normal`
 - Specific feature → invoke `/demo-app --filter <scenario> --speed normal`
-- Manual control → invoke `/demo-app --cases docs/changes/<name>/demo-cases.md --pause`
+- Manual control → invoke `/demo-app --cases <docs-folder>/changes/<name>/demo-cases.md --pause`
 
 After the demo completes, remind the user:
 > "Run `/es-change-update-master` to apply changes to master product docs."
