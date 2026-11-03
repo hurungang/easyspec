@@ -231,3 +231,56 @@ describe("upgrade cleanup", () => {
     assert.strictEqual(fs.existsSync(target), true);
   });
 });
+
+describe("pre-manifest legacy cleanup", () => {
+  function seedLegacy() {
+    setupTmp();
+    const commandsDir = path.join(tmpDir, ".opencode", "commands");
+    fs.mkdirSync(commandsDir, { recursive: true });
+    // Untagged files from an install that predates the manifest and ownership tags.
+    fs.writeFileSync(path.join(commandsDir, "es-change-init.md"), "---\nname: es-change-init\n---\n", "utf8");
+    fs.writeFileSync(path.join(commandsDir, "es-change-review.md"), "---\nname: es-change-review\n---\n", "utf8");
+    fs.writeFileSync(path.join(commandsDir, "my-custom.md"), "user file\n", "utf8");
+  }
+
+  it("surfaces untagged es- artifacts as legacy candidates when no manifest exists", () => {
+    seedLegacy();
+    const toolRoot = path.join(tmpDir, ".opencode");
+    const { manifestFound, candidates, legacyCandidates } = computeCleanupCandidates(toolRoot, []);
+
+    assert.strictEqual(manifestFound, false);
+    assert.deepStrictEqual(candidates, [], "untagged files are never tag-verified candidates");
+    assert.deepStrictEqual(legacyCandidates, [
+      "commands/es-change-init.md",
+      "commands/es-change-review.md",
+    ]);
+    assert.ok(!legacyCandidates.includes("commands/my-custom.md"), "non-es user files are ignored");
+  });
+
+  it("does not surface legacy candidates when a manifest exists", () => {
+    seedLegacy();
+    const toolRoot = path.join(tmpDir, ".opencode");
+    fs.mkdirSync(path.join(toolRoot, ".easyspec"), { recursive: true });
+    fs.writeFileSync(
+      manifestPath(toolRoot),
+      JSON.stringify({ version: 1, installedAt: "2020-01-01T00:00:00Z", files: [] }),
+      "utf8"
+    );
+
+    const { legacyCandidates } = computeCleanupCandidates(toolRoot, []);
+    assert.deepStrictEqual(legacyCandidates, []);
+  });
+
+  it("non-interactive cleanup keeps legacy candidates and deletes nothing", async () => {
+    seedLegacy();
+    const toolRoot = path.join(tmpDir, ".opencode");
+    const target = path.join(toolRoot, "commands", "es-change-init.md");
+
+    const result = await runUpgradeCleanup(toolRoot, []);
+    assert.strictEqual(result.legacyCandidates.length, 2);
+    assert.deepStrictEqual(result.deleted, []);
+    assert.ok(result.kept.includes("commands/es-change-init.md"));
+    assert.ok(result.kept.includes("commands/es-change-review.md"));
+    assert.strictEqual(fs.existsSync(target), true);
+  });
+});

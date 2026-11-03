@@ -721,7 +721,37 @@ async function confirmLegacyMigration(dryRun) {
   return !isCancel(answer) && answer;
 }
 
-async function promptForAgents() {
+function detectInstalledAgents(workspace) {
+  const detected = new Set();
+  const projectProbes = {
+    copilot: [".github/agents", ".github/prompts"],
+    opencode: [".opencode/agents", ".opencode/commands"],
+    "claude-code": [".claude/agents", ".claude/commands"],
+  };
+
+  for (const [agent, probes] of Object.entries(projectProbes)) {
+    if (probes.some((probe) => fs.existsSync(path.resolve(workspace, probe)))) {
+      detected.add(agent);
+    }
+  }
+
+  for (const agent of SUPPORTED_AGENTS) {
+    const root = getHomeRoot(agent);
+    const probes = [path.join(root, "agents"), path.join(root, "commands")];
+    if (agent === "copilot") {
+      const prompts = copilotUserPromptDir();
+      if (prompts) probes.push(prompts);
+    }
+    if (probes.some((probe) => fs.existsSync(probe))) {
+      detected.add(agent);
+    }
+  }
+
+  return [...detected];
+}
+
+async function promptForAgents(workspace) {
+  const detected = detectInstalledAgents(workspace);
   const selected = await multiselect({
     message: "Select target harness(es) — space to toggle, enter to confirm:",
     options: SUPPORTED_AGENTS.map((agent) => ({
@@ -729,7 +759,7 @@ async function promptForAgents() {
       label: TOOL_PROFILES[agent].label,
     })),
     required: true,
-    initialValues: ["copilot"],
+    initialValues: detected.length > 0 ? detected : ["copilot"],
   });
 
   if (isCancel(selected)) {
@@ -806,7 +836,7 @@ export async function runCli(argv) {
 
   let agents = args.agents;
   if (process.stdin.isTTY && !args.agentsExplicit) {
-    agents = await promptForAgents();
+    agents = await promptForAgents(args.workspace);
   }
   if (!agents || agents.length === 0) {
     agents = ["copilot"];
@@ -914,9 +944,10 @@ export async function runCli(argv) {
       console.log(`  prompts -> ${report.promptsDest}`);
     }
     console.log(`  copied=${report.copied} overwritten=${report.overwritten} skipped=${report.skipped}`);
-    if (report.cleanup && report.cleanup.candidates.length > 0) {
+    if (report.cleanup && (report.cleanup.candidates.length > 0 || (report.cleanup.legacyCandidates?.length ?? 0) > 0)) {
       const { deleted, kept } = report.cleanup;
-      console.log(`  upgrade cleanup: deleted=${deleted.length} kept=${kept.length}`);
+      const legacyCount = report.cleanup.legacyCandidates?.length ?? 0;
+      console.log(`  upgrade cleanup: deleted=${deleted.length} kept=${kept.length} legacy=${legacyCount}`);
       for (const rel of deleted) {
         console.log(`    deleted: ${rel}`);
       }

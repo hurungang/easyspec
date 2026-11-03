@@ -32,7 +32,7 @@ conventions:
   - Templates in templates/content/ are canonical source for prompts, agents, and skills
   - Package published to npm as "@myaider/easyspec"
   - No build step — source is distributed directly
-  - Every easyspec-created artifact starts with the ownership tag (`<!-- easyspec:managed v1 -->` markdown / `# easyspec:managed v1` YAML) — untagged files are never deleted
+  - Every easyspec-created artifact starts with the ownership tag (`<!-- easyspec:managed v1 -->` markdown / `# easyspec:managed v1` YAML) — untagged files are never deleted automatically
   - Project configuration lives in root `easyspec-config.yaml` (not a docs-folder config file); all easyspec content resolves through the configurable docs folder (`docs_folder`, default `easyspec-docs`)
   - Install manifest at `.easyspec/manifest.json` inside the installed tool directory powers tag-verified upgrade cleanup
 
@@ -40,5 +40,5 @@ conventions:
 domain:
   - This is the easyspec source repo itself — changes affect the kit distributed to other projects
   - Templates are transformed at install time per target agent tool (copilot, opencode, etc.)
-  - Upgrades delete only retired, tagged, user-confirmed files — files without the ownership tag are never removed or overwritten
+  - Upgrades delete only user-confirmed files: tag-verified retired artifacts, plus legacy pre-manifest easyspec files offered with an explicit warning. Untagged files are never removed or overwritten automatically.
   - All entity names use "es-" prefix to avoid overriding user-defined agents/prompts/skills

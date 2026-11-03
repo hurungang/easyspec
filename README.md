@@ -49,6 +49,8 @@ Run interactively, the CLI asks three questions:
 2. **Scope** — install into the current project, or globally into your user profile.
 3. **Docs folder** *(project scope, fresh init only)* — confirm the folder easyspec uses for its documentation. Default is **`easyspec-docs`**; choose a different name if your project already has a `docs/` folder managed by another tool. The confirmed value is stored in `easyspec-config.yaml` at the project root.
 
+Harnesses that already have an easyspec install are preselected. Re-running with the same harness and scope upgrades that install: new artifacts such as `es-init` are added, existing files are refreshed, and obsolete easyspec files are offered for deletion.
+
 You can skip the prompts with flags:
 
 | Option | Values | Default | Description |
@@ -132,7 +134,7 @@ Every file easyspec creates — the root config, generated master/change docs, a
 <!-- easyspec:managed v1 -->
 ```
 
-The tag powers safe upgrades. Each install records a manifest at `.easyspec/manifest.json` inside the installed tool directory (e.g. `<ws>/.github/.easyspec/manifest.json`). On a re-install, files that are retired from the new version (such as the old `es-change-init` command), listed in the previous manifest or matching a retired name, **and** verified to carry the ownership tag on disk are offered for deletion — one confirmation per file, with a keep option. **Files without the tag are never deleted or overwritten**, including user files that share a name with an easyspec artifact. `--dry-run` and non-interactive runs list candidates without deleting anything.
+The tag powers safe upgrades. Each install records a manifest at `.easyspec/manifest.json` inside the installed tool directory (e.g. `<ws>/.github/.easyspec/manifest.json`). On a re-install, files that are retired from the new version (such as the old `es-change-init` command), listed in the previous manifest or matching a retired name, **and** verified to carry the ownership tag on disk are offered for deletion — one confirmation per file, with a keep option. **Untagged files are never deleted or overwritten automatically.** For installs that predate the manifest and ownership tag, easyspec separately offers to remove files whose names match its own `es-` artifacts, with an explicit warning and confirmation. `--dry-run` and non-interactive runs list candidates without deleting anything.
 
 ## Acknowledgements
 
