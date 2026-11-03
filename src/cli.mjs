@@ -565,13 +565,10 @@ async function installToRoot(rootPath, promptsDest, sourceRoot, contentRoot, age
   const contentSkillsDir = path.join(contentRoot, "skills");
   mergeSummary(summary, copySkillDirectory(contentSkillsDir, skillsDest, contentRoot, options));
 
-  // Upgrade cleanup + manifest, one pass per distinct install root. A "tool"
-  // root has agents/prompts/skills subdirectories; an external prompts dir is a
-  // flat root. See `collectInstallRoots`.
+  // Upgrade cleanup + manifest, one pass per distinct install root.
   const cleanups = [];
   for (const { root, relPaths } of collectInstallRoots(rootPath, promptsDest, options.installedFiles)) {
-    const layout = root === rootPath ? "tool" : "flat";
-    const result = await runUpgradeCleanup(root, relPaths, { dryRun: options.dryRun, layout });
+    const result = await runUpgradeCleanup(root, relPaths, { dryRun: options.dryRun });
     cleanups.push({ root, result });
     writeManifest(root, relPaths, { dryRun: options.dryRun });
   }
@@ -1001,12 +998,11 @@ export async function runCli(argv) {
     console.log(`  copied=${report.copied} overwritten=${report.overwritten} skipped=${report.skipped}`);
     for (const { root, result } of report.cleanups || []) {
       const retiredCount = result.retiredCandidates?.length ?? 0;
-      const legacyCount = result.legacyCandidates?.length ?? 0;
-      if (result.candidates.length === 0 && retiredCount === 0 && legacyCount === 0) {
+      if (retiredCount === 0) {
         continue;
       }
       const where = root === report.rootPath ? "" : ` (${root})`;
-      console.log(`  upgrade cleanup${where}: deleted=${result.deleted.length} kept=${result.kept.length} retired=${retiredCount} legacy=${legacyCount}`);
+      console.log(`  upgrade cleanup${where}: deleted=${result.deleted.length} kept=${result.kept.length} retired=${retiredCount}`);
       for (const rel of result.deleted) {
         console.log(`    deleted: ${rel}`);
       }

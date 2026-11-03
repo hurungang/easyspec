@@ -3,14 +3,13 @@
 
 ## Overview
 
-The upgrade module (`src/upgrade.mjs`, introduced by the rework) provides tag-verified upgrade cleanup. It records the install manifest after each install run and, on subsequent installs, offers for deletion only artifacts that are retired from the new version, tag-verified on disk, and individually confirmed by the user (with a keep option). Installs that predate the manifest and ownership tag get a separate, explicitly confirmed legacy cleanup path for files matching easyspec's `es-` artifact naming; untagged files are never deleted automatically.
+The upgrade module (`src/upgrade.mjs`) provides minimal, safe cleanup: on each install it records a manifest (`.easyspec/manifest.json`) and offers to delete **only** files whose names match a known retired artifact (`RETIRED_ARTIFACT_PATTERNS`, e.g. `es-change-init`, `es-change-review`). Nothing else is ever treated as a deletion candidate — current files, user files, and other `es-*` files are left untouched.
 
 ## Technical Design
 
-- **Manifest** — recorded at `.easyspec/manifest.json` inside the installed tool directory (`MANIFEST_DIR`/`MANIFEST_FILE`, path via `manifestPath`); lists destination paths and a content identity (`hashFile`) per installed file; read on subsequent installs to determine prior state.
-- **Candidate classification** — `computeCleanupCandidates` marks a prior artifact as a deletion candidate when it is retired by name (matched against `RETIRED_ARTIFACT_PATTERNS`, e.g. `es-change-init`, `es-change-review`) **or** listed in the old manifest, and is tag-verified on disk. This means retired artifacts are offered even when no prior manifest exists.
-- **Legacy classification** — untagged files without the ownership tag are surfaced separately as `legacyCandidates`: (a) files matching a retired name are offered regardless of manifest (they can linger from installs that predate ownership tagging); (b) when there is no manifest at all, any untagged file under `commands/`, `prompts/`, `agents/`, or `skills/` whose basename matches `es-*.md` is offered. Non-`es-` user files are never included, and these are never mixed with tag-verified candidates. A flat prompt directory (Copilot's global user prompts dir) is supported via the `layout` option.
-- **Interactive cleanup** — `runUpgradeCleanup` runs per-file confirmation with a keep option via `@clack/prompts`; legacy candidates get a separate explicit warning before deletion. It no-ops safely when non-interactive or `--dry-run`.
+- **Manifest** — recorded at `.easyspec/manifest.json` inside the installed tool directory (`MANIFEST_DIR`/`MANIFEST_FILE`, path via `manifestPath`); lists destination paths and a content identity (`hashFile`) per installed file.
+- **Candidate classification** — `computeCleanupCandidates` walks the install root and marks a file as a deletion candidate only when its name matches `RETIRED_ARTIFACT_PATTERNS`. Current files (the new artifact set) are skipped; every other file — including user files that share an `es-` name — is ignored.
+- **Interactive cleanup** — `runUpgradeCleanup` runs per-file confirmation with a keep option via `@clack/prompts`. It lists candidates without deleting when non-interactive or `--dry-run`.
 
 ## Code Reference Map
 
@@ -23,11 +22,10 @@ The upgrade module (`src/upgrade.mjs`, introduced by the rework) provides tag-ve
 | `readManifest` | function | Reads the prior install manifest | `src/upgrade.mjs` |
 | `writeManifest` | function | Records installed file paths (with `--dry-run` awareness) after an install | `src/upgrade.mjs` |
 | `hashFile` | function | Content identity for installed files, used for upgrade comparison | `src/upgrade.mjs` |
-| `computeCleanupCandidates` | function | Classifies tag-verified deletion candidates plus separate legacy candidates for pre-manifest installs | `src/upgrade.mjs` |
-| `isLegacyEasyspecArtifact` | function | Identifies untagged `es-*.md` artifacts in install directories for the legacy cleanup path | `src/upgrade.mjs` |
-| `runUpgradeCleanup` | function | Interactive confirm/keep deletion (tagged first, then explicitly confirmed legacy); safe no-op when non-interactive or `--dry-run` | `src/upgrade.mjs` |
-| upgrade tests | tests | Install tagging, manifest, tagged cleanup, and pre-manifest legacy-cleanup coverage | `tests/upgrade.test.js` |
+| `computeCleanupCandidates` | function | Finds files whose name matches a known retired artifact name (the only deletion candidates) | `src/upgrade.mjs` |
+| `runUpgradeCleanup` | function | Offers to delete retired artifacts with per-file confirmation; lists without deleting when non-interactive or `--dry-run` | `src/upgrade.mjs` |
+| upgrade tests | tests | Retired-artifact detection, non-interactive/dry-run safety, and manifest recording | `tests/upgrade.test.js` |
 
 ## Data Flow
 
-Prior install → `.easyspec/manifest.json` → on re-install: read manifest + stat/read each listed file (tag verification via `src/ownership.mjs`) → compare against new artifact set + retired-name patterns → interactive per-file confirm → delete or keep. Untagged files matching retired names are offered for deletion regardless of manifest; when no manifest exists, other untagged `es-*` install files are classified separately as legacy candidates and require an explicit legacy confirmation.
+On each install: render/write the current artifact set → record the manifest → walk the install root and match file names against `RETIRED_ARTIFACT_PATTERNS` → interactive per-file confirm → delete or keep. Only retired names are ever candidates; current files and user files are never touched.

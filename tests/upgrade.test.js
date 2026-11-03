@@ -131,10 +131,8 @@ describe("install tagging, config scaffolding, and manifest", () => {
     assert.strictEqual(manifest.files.length, INSTALLED_COUNT, "manifest must keep the full file set");
 
     const relPaths = manifest.files.map((f) => f.path);
-    const { candidates, retiredCandidates, legacyCandidates } = computeCleanupCandidates(toolRoot, relPaths);
-    assert.deepStrictEqual(candidates, [], "current files must not be flagged as obsolete");
-    assert.deepStrictEqual(retiredCandidates, [], "no retired files seeded");
-    assert.deepStrictEqual(legacyCandidates, [], "no legacy files seeded");
+    const { retiredCandidates } = computeCleanupCandidates(toolRoot, relPaths);
+    assert.deepStrictEqual(retiredCandidates, [], "current files must not be flagged as retired");
   });
 
   it("global scope does not create a project config", () => {
@@ -185,55 +183,52 @@ describe("install tagging, config scaffolding, and manifest", () => {
   });
 });
 
-describe("upgrade cleanup", () => {
-  function seedRetired(tagged) {
+describe("retired artifact cleanup", () => {
+  function seedRetiredFiles(files) {
     setupTmp();
     const commandsDir = path.join(tmpDir, ".opencode", "commands");
     fs.mkdirSync(commandsDir, { recursive: true });
-    const content = tagged
-      ? `---\nname: es-change-init\n---\n\nold prompt\n\n<!-- ${OWNERSHIP_MARKER} -->\n`
-      : "---\nname: es-change-init\n---\n\nold untagged file\n";
-    fs.writeFileSync(path.join(commandsDir, "es-change-init.md"), content, "utf8");
+    for (const [name, content] of Object.entries(files)) {
+      fs.writeFileSync(path.join(commandsDir, name), content, "utf8");
+    }
   }
 
-  it("classifies retired names as retiredCandidates regardless of tag", () => {
-    seedRetired(true);
-    const toolRoot = path.join(tmpDir, ".opencode");
-    const { candidates, retiredCandidates } = computeCleanupCandidates(toolRoot, []);
-    assert.deepStrictEqual(candidates, []);
+  it("detects retired names (es-change-init, es-change-review) as candidates", () => {
+    seedRetiredFiles({
+      "es-change-init.md": "---\nname: es-change-init\n---\n\nold\n",
+      "es-change-review.md": "---\nname: es-change-review\n---\n\nold\n",
+    });
+    const { retiredCandidates } = computeCleanupCandidates(path.join(tmpDir, ".opencode"), []);
+    assert.deepStrictEqual(retiredCandidates, [
+      "commands/es-change-init.md",
+      "commands/es-change-review.md",
+    ]);
+  });
+
+  it("detects retired names regardless of ownership tag", () => {
+    seedRetiredFiles({
+      "es-change-init.md": `---\nname: es-change-init\n---\n\ntagged\n\n<!-- ${OWNERSHIP_MARKER} -->\n`,
+    });
+    const { retiredCandidates } = computeCleanupCandidates(path.join(tmpDir, ".opencode"), []);
     assert.deepStrictEqual(retiredCandidates, ["commands/es-change-init.md"]);
   });
 
-  it("classifies untagged retired names as retiredCandidates too", () => {
-    seedRetired(false);
-    const toolRoot = path.join(tmpDir, ".opencode");
-    const { candidates, retiredCandidates } = computeCleanupCandidates(toolRoot, []);
-    assert.deepStrictEqual(candidates, []);
-    assert.deepStrictEqual(retiredCandidates, ["commands/es-change-init.md"]);
+  it("never flags current files or non-retired es-* files as candidates", () => {
+    seedRetiredFiles({
+      "es-init.md": "---\nname: es-init\n---\n\ncurrent\n",
+      "es-quick-fix.md": "---\nname: es-quick-fix\n---\n\ncurrent\n",
+      "es-old-helper.md": "---\nname: es-old-helper\n---\n\nuser file\n",
+      "my-custom.md": "user file\n",
+    });
+    const { retiredCandidates } = computeCleanupCandidates(
+      path.join(tmpDir, ".opencode"),
+      ["commands/es-init.md", "commands/es-quick-fix.md"]
+    );
+    assert.deepStrictEqual(retiredCandidates, [], "only retired names should be candidates");
   });
 
-  it("old-manifest entries that vanish from the new version become tag-verified candidates", () => {
-    setupTmp();
-    const toolRoot = path.join(tmpDir, ".opencode");
-    const legacyRel = "agents/es-legacy.md";
-    fs.mkdirSync(path.join(toolRoot, "agents"), { recursive: true });
-    fs.writeFileSync(
-      path.join(toolRoot, legacyRel),
-      `old agent\n\n<!-- ${OWNERSHIP_MARKER} -->\n`,
-      "utf8"
-    );
-    fs.mkdirSync(path.join(toolRoot, ".easyspec"), { recursive: true });
-    fs.writeFileSync(
-      manifestPath(toolRoot),
-      JSON.stringify({ version: 1, installedAt: "2020-01-01T00:00:00Z", files: [{ path: legacyRel, hash: "x" }] }),
-      "utf8"
-    );
-    const { candidates } = computeCleanupCandidates(toolRoot, []);
-    assert.deepStrictEqual(candidates, [legacyRel]);
-  });
-
-  it("non-interactive run lists retired names without deleting", async () => {
-    seedRetired(true);
+  it("non-interactive run lists retired files without deleting", async () => {
+    seedRetiredFiles({ "es-change-init.md": "---\nname: es-change-init\n---\n\nold\n" });
     const toolRoot = path.join(tmpDir, ".opencode");
     const target = path.join(toolRoot, "commands", "es-change-init.md");
     const result = await runUpgradeCleanup(toolRoot, []);
@@ -244,7 +239,7 @@ describe("upgrade cleanup", () => {
   });
 
   it("dry-run cleanup deletes nothing", async () => {
-    seedRetired(true);
+    seedRetiredFiles({ "es-change-init.md": "---\nname: es-change-init\n---\n\nold\n" });
     const toolRoot = path.join(tmpDir, ".opencode");
     const target = path.join(toolRoot, "commands", "es-change-init.md");
     const result = await runUpgradeCleanup(toolRoot, [], { dryRun: true });
@@ -254,101 +249,7 @@ describe("upgrade cleanup", () => {
   });
 });
 
-describe("pre-manifest legacy cleanup", () => {
-  function seedLegacy() {
-    setupTmp();
-    const commandsDir = path.join(tmpDir, ".opencode", "commands");
-    fs.mkdirSync(commandsDir, { recursive: true });
-    // Untagged files from an install that predates the manifest and ownership tags.
-    fs.writeFileSync(path.join(commandsDir, "es-change-init.md"), "---\nname: es-change-init\n---\n", "utf8");
-    fs.writeFileSync(path.join(commandsDir, "es-change-review.md"), "---\nname: es-change-review\n---\n", "utf8");
-    fs.writeFileSync(path.join(commandsDir, "es-old-helper.md"), "---\nname: es-old-helper\n---\n", "utf8");
-    fs.writeFileSync(path.join(commandsDir, "my-custom.md"), "user file\n", "utf8");
-  }
-
-  it("separates retired names from the broad es-* scan when no manifest exists", () => {
-    seedLegacy();
-    const toolRoot = path.join(tmpDir, ".opencode");
-    const { manifestFound, candidates, retiredCandidates, legacyCandidates } = computeCleanupCandidates(toolRoot, []);
-
-    assert.strictEqual(manifestFound, false);
-    assert.deepStrictEqual(candidates, []);
-    assert.deepStrictEqual(retiredCandidates, [
-      "commands/es-change-init.md",
-      "commands/es-change-review.md",
-    ]);
-    assert.deepStrictEqual(legacyCandidates, ["commands/es-old-helper.md"]);
-    assert.ok(!legacyCandidates.includes("commands/my-custom.md"), "non-es user files are ignored");
-  });
-
-  it("still surfaces retired-name untagged artifacts when a manifest exists", () => {
-    seedLegacy();
-    const toolRoot = path.join(tmpDir, ".opencode");
-    fs.mkdirSync(path.join(toolRoot, ".easyspec"), { recursive: true });
-    fs.writeFileSync(
-      manifestPath(toolRoot),
-      JSON.stringify({ version: 1, installedAt: "2020-01-01T00:00:00Z", files: [] }),
-      "utf8"
-    );
-
-    const { retiredCandidates, legacyCandidates } = computeCleanupCandidates(toolRoot, []);
-    assert.deepStrictEqual(retiredCandidates, [
-      "commands/es-change-init.md",
-      "commands/es-change-review.md",
-    ]);
-    // With a manifest present, the broad es-* scan is disabled, so the
-    // non-retired es-old-helper.md is not surfaced.
-    assert.deepStrictEqual(legacyCandidates, []);
-  });
-
-  it("non-interactive cleanup lists retired and legacy candidates without deleting", async () => {
-    seedLegacy();
-    const toolRoot = path.join(tmpDir, ".opencode");
-    const retiredTarget = path.join(toolRoot, "commands", "es-change-init.md");
-    const helperTarget = path.join(toolRoot, "commands", "es-old-helper.md");
-
-    const result = await runUpgradeCleanup(toolRoot, []);
-    assert.deepStrictEqual(result.retiredCandidates, [
-      "commands/es-change-init.md",
-      "commands/es-change-review.md",
-    ]);
-    assert.deepStrictEqual(result.deleted, []);
-    assert.deepStrictEqual(result.kept, [
-      "commands/es-change-init.md",
-      "commands/es-change-review.md",
-      "commands/es-old-helper.md",
-    ]);
-    assert.strictEqual(fs.existsSync(retiredTarget), true, "non-interactive deletes nothing");
-    assert.strictEqual(fs.existsSync(helperTarget), true);
-  });
-});
-
-describe("retired names and flat-layout roots", () => {
-  it("detects es-change-review as a retired name (tagged or untagged)", () => {
-    setupTmp();
-    const commandsDir = path.join(tmpDir, ".opencode", "commands");
-    fs.mkdirSync(commandsDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(commandsDir, "es-change-review.md"),
-      `---\nname: es-change-review\n---\n\nold prompt\n\n<!-- ${OWNERSHIP_MARKER} -->\n`,
-      "utf8"
-    );
-    const { retiredCandidates } = computeCleanupCandidates(path.join(tmpDir, ".opencode"), []);
-    assert.deepStrictEqual(retiredCandidates, ["commands/es-change-review.md"]);
-  });
-
-  it("surfaces untagged es- prompts in a flat prompt directory", () => {
-    setupTmp();
-    const promptsDir = path.join(tmpDir, "prompts");
-    fs.mkdirSync(promptsDir, { recursive: true });
-    fs.writeFileSync(path.join(promptsDir, "es-old-thing.prompt.md"), "---\nname: es-old-thing\n---\n", "utf8");
-    fs.writeFileSync(path.join(promptsDir, "my-prompt.prompt.md"), "user prompt\n", "utf8");
-
-    const { candidates, legacyCandidates } = computeCleanupCandidates(promptsDir, [], { layout: "flat" });
-    assert.deepStrictEqual(candidates, []);
-    assert.deepStrictEqual(legacyCandidates, ["es-old-thing.prompt.md"]);
-  });
-
+describe("copilot global prompts cleanup", () => {
   function copilotUserPromptDir(homeDir) {
     if (process.platform === "win32") {
       const appData = process.env.APPDATA;
@@ -360,7 +261,7 @@ describe("retired names and flat-layout roots", () => {
     return path.join(homeDir, ".config", "Code", "User", "prompts");
   }
 
-  it("copilot global install records a separate prompts manifest and keeps stale retired prompts non-interactively", { skip: process.platform === "win32" }, () => {
+  it("detects retired prompts in the Copilot global prompts dir and keeps them non-interactively", { skip: process.platform === "win32" }, () => {
     setupTmp();
     const promptDir = copilotUserPromptDir(fakeHome);
     assert.ok(promptDir, "unable to resolve copilot user prompt dir");
@@ -371,8 +272,6 @@ describe("retired names and flat-layout roots", () => {
 
     runCli("init --scope global --agent copilot --force --no-model-prompt 2>/dev/null");
 
-    // Non-interactive run deletes nothing; the stale retired prompt is kept but
-    // the external prompts root still gets its own manifest.
     assert.strictEqual(fs.existsSync(stale), true, "non-interactive run must not delete");
 
     const manifest = readManifest(promptDir);

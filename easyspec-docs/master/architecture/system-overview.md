@@ -74,7 +74,7 @@ flowchart TD
     F -->|No| K[Done]
 ```
 
-Untagged files — including user files that happen to share a name with an easyspec artifact — are never deleted or overwritten automatically. On installs that predate the manifest and ownership tag, `es-*` artifacts are offered for deletion only through a separate, explicitly confirmed legacy path. The tag format is version-stable so future releases recognize artifacts tagged by earlier versions.
+Untagged files — including user files that happen to share a name with an easyspec artifact — are never deleted or overwritten automatically. The only files easyspec ever offers to delete are those whose names match a known retired artifact (`es-change-init`, `es-change-review`), and only after confirmation. The tag format is version-stable so future releases recognize artifacts tagged by earlier versions.
 
 ## Integration Points
 

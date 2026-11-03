@@ -46,12 +46,11 @@ CLI-level end-to-end coverage (drives the installer against temp workspaces; `te
 - All three profiles produce only tagged files; install renders `es-init` and leaves no `es-change-init` or `es-change-review` artifact.
 - Global scope creates no project config; `--dry-run` writes nothing; re-install refreshes the manifest. Copilot global scope records a separate manifest in its external prompts directory.
 - Custom `docs_folder` honored at the CLI level (no `easyspec-docs` created, existing config not clobbered); malformed config does not crash init.
-- Upgrade cleanup: candidate classification (retired-by-name plus old-manifest entries, tagged-only); untagged same-named files are never tag-verified candidates and are never deleted automatically; untagged files matching a retired name (`es-change-init`, `es-change-review`) are surfaced regardless of manifest; non-interactive run keeps all candidates (`kept` populated, nothing deleted); dry-run no-op.
-- Pre-manifest legacy cleanup: with no install manifest, untagged `es-*` artifacts in install dirs (`commands/`, `prompts/`, `agents/`, `skills/`) are surfaced separately as legacy candidates; flat prompt directories (Copilot's global prompts dir) are covered via the `layout` option; non-`es-` user files are ignored; non-interactive/dry-run keep them; interactive runs require explicit confirmation before deletion.
+- Upgrade cleanup: only files whose name matches a known retired artifact (`es-change-init`, `es-change-review`) become deletion candidates; current files and other `es-*` files are never candidates; non-interactive run keeps candidates (`kept` populated, nothing deleted); dry-run no-op.
 
 ## 5. Manual E2E (not automated)
 
-Verify in sandbox projects per `../testing-strategy.md`: fresh install scaffolds config and tagged artifacts; pre-existing docs untouched; upgrade cleanup offers only tagged retired artifacts and honors keep in non-interactive mode. LLM-driven master-doc generation (`es-init` code-wins behavior, codebase-only scan, graceful degradation) is covered by prompt-body assertions in `tests/template.test.js` plus manual verification — it is not automatable in the Node suite.
+Verify in sandbox projects per `../testing-strategy.md`: fresh install scaffolds config and tagged artifacts; pre-existing docs untouched; upgrade cleanup offers only files matching a known retired artifact name (`es-change-init`, `es-change-review`) and honors keep in non-interactive mode. LLM-driven master-doc generation (`es-init` code-wins behavior, codebase-only scan, graceful degradation) is covered by prompt-body assertions in `tests/template.test.js` plus manual verification — it is not automatable in the Node suite.
 
 ---
 

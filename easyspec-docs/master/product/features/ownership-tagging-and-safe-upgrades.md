@@ -8,11 +8,10 @@ Every artifact easyspec creates is explicitly marked as easyspec-owned, making t
 - Every user-facing artifact easyspec creates — master docs, change docs, the root config file, and installed prompts/agents/skills — carries a machine-readable easyspec ownership marker.
 - The marker is stable across versions so future upgrades can identify artifacts created by this and earlier releases.
 - On version upgrade, the installer:
-  - Identifies obsolete easyspec-owned files from previous versions (e.g., retired commands) as deletion candidates — only tagged files qualify.
-  - For installs that predate the manifest and ownership tag, separately identifies untagged files matching easyspec's `es-` artifact naming and offers them for deletion with an explicit warning.
+  - Identifies obsolete easyspec files from previous versions **by their retired name only** (`es-change-init`, `es-change-review`) as deletion candidates.
   - Presents each deletion candidate for user confirmation, with a per-file or batched option to keep any old file.
   - Skips declined deletions without error.
-- Files without the easyspec ownership tag are never deleted or overwritten automatically — including user files that happen to share a name with an easyspec artifact.
+- Files other than known retired artifacts — including user files that happen to share an `es-` name — are never deleted or overwritten.
 
 ## Value
 
@@ -22,5 +21,5 @@ Every artifact easyspec creates is explicitly marked as easyspec-owned, making t
 ## Rules
 
 - Ownership tagging is mandatory for every easyspec-created artifact, in every target tool's format.
-- Untagged files are categorically excluded from automatic deletion; pre-manifest easyspec artifacts are only offered for deletion after an explicit warning and confirmation.
+- Untagged files are categorically excluded from automatic deletion; only files matching a known retired artifact name are offered for deletion, after confirmation.
 - All deletions are confirm-by-default; unattended automatic upgrades are out of scope.
