@@ -19,4 +19,4 @@ Master technology documentation for the easyspec kit. Easyspec is a no-build-ste
 - **Ownership Tag Contract** — every artifact the installer or `es-init` creates is tagged `<!-- easyspec:managed v1 -->` (YAML form `# easyspec:managed v1`); untagged files are never deleted or overwritten.
 - **Tag-verified upgrade cleanup** — retired artifacts are offered for confirmed deletion only when tag-verified on disk, either via a prior install manifest or known retired-artifact name patterns (e.g. the removed `es-change-init`).
 
-Source of truth for code layout lives in each module's Code Reference Map; module specs were derived from change `docs/changes/easyspec-config-and-init-rework`.
+Source of truth for code layout lives in each module's Code Reference Map; module specs were derived from change `easyspec-docs/changes/archive/2026-11-02-easyspec-config-and-init-rework`.

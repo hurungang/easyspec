@@ -2,7 +2,7 @@ import fs from "node:fs";
 
 /**
  * Ownership tag contract — see
- * docs/changes/easyspec-config-and-init-rework/ownership-and-config.md
+ * easyspec-docs/changes/archive/2026-11-02-easyspec-config-and-init-rework/ownership-and-config.md
  *
  * Safety rule: untagged files are never deleted. Detection is a plain substring
  * match on the marker core so it works in any target-tool format.

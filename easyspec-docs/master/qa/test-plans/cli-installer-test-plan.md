@@ -54,4 +54,4 @@ Verify in sandbox projects per `../testing-strategy.md`: fresh install scaffolds
 
 ## Coverage → Acceptance Criteria
 
-Maps to the change PRD ACs (AC1–AC12) as detailed in `docs/changes/easyspec-config-and-init-rework/test-plan.md` §5–6; every AC has at least one automated reference above, with AC6–AC8 (generation behavior) additionally verified manually.
+Maps to the change PRD ACs (AC1–AC12) as detailed in `easyspec-docs/changes/archive/2026-11-02-easyspec-config-and-init-rework/test-plan.md` §5–6; every AC has at least one automated reference above, with AC6–AC8 (generation behavior) additionally verified manually.

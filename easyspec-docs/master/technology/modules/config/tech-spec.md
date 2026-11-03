@@ -27,9 +27,9 @@ The config module (`src/config.mjs`, introduced by the rework) is the Docs Folde
 | `resolveDocsPaths` | function | Derives `<docs-folder>/master/` and `<docs-folder>/changes/` paths | `src/config.mjs` |
 | `renderConfigYaml` | function | Renders the config file schema with the docs-folder setting | `src/config.mjs` |
 | `scaffoldConfig` | function | Creates the config file when absent, without clobbering | `src/config.mjs` |
-| repo root config | config | This repo's own easyspec configuration post-migration (legacy `docs/` layout retained for reference) | `easyspec-config.yaml` |
+| repo root config | config | This repo's own easyspec configuration (configured `easyspec-docs/` layout) | `easyspec-config.yaml` |
 | config tests | tests | Config parsing, docs-folder resolution, scaffolding coverage | `tests/config.test.js` |
-| ownership & config doc | doc | Ownership-tag contract, manifest location, `easyspec-config.yaml` schema | `docs/changes/easyspec-config-and-init-rework/ownership-and-config.md` |
+| ownership & config doc | doc | Ownership-tag contract, manifest location, `easyspec-config.yaml` schema | `easyspec-docs/changes/archive/2026-11-02-easyspec-config-and-init-rework/ownership-and-config.md` |
 
 ## Data Flow
 
