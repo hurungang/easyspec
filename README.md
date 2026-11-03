@@ -58,8 +58,7 @@ You can skip the prompts with flags:
 | `--agent` | `copilot`, `opencode`, `claude-code` (comma-separated for multiple) | interactive | Target coding agent(s) |
 | `--scope` | `project`, `global` | interactive | Install scope |
 | `--workspace` | `<path>` | cwd | Project folder for `--scope project` |
-| `--force` | — | false | Overwrite existing files |
-| `--dry-run` | — | false | Preview without writing |
+| `--dry-run` | — | false | Preview without writing (init always refreshes existing files with the latest content) |
 | `--tech-model` | `<name>` | `auto` | Model for technical agents |
 | `--non-tech-model` | `<name>` | `auto` | Model for non-technical agents |
 | `--model-preset` | `balanced`, `speed`, `quality` | — | Apply a preset model pair |

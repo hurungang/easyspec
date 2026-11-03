@@ -120,8 +120,9 @@ init options:
                                   Project scope scaffolds easyspec-config.yaml at the
                                   workspace root with a confirmed docs folder
                                   (default: easyspec-docs)
-  --force                         Overwrite existing files
   --dry-run                       Show what would be copied without writing
+                                  (init always overwrites existing files with the
+                                  latest content)
   --tech-model <name>             Model for technical agents (default: auto)
   --non-tech-model <name>         Model for non-technical agents (default: auto)
   --model-preset <balanced|speed|quality>
@@ -375,16 +376,6 @@ function renderEntitiesFromContent(templateDir, destDir, contentDir, entityType,
     const destPath = path.join(destDir, destName);
     const exists = fs.existsSync(destPath);
 
-    if (exists && !options.force) {
-      summary.skipped += 1;
-      // Still part of the artifact set — record it so upgrade cleanup and the
-      // manifest see the full intended file set, not just freshly written files.
-      if (!options.dryRun) {
-        options.installedFiles.push(destPath);
-      }
-      continue;
-    }
-
     let rendered = genericTemplate
       .replace(/{{name}}/g, frontmatter.name || "")
       .replace(/{{description}}/g, frontmatter.description || "")
@@ -427,14 +418,6 @@ function copySkillDirectory(srcSkillDir, destSkillDir, contentDir, options) {
       const sfSrc = path.join(skillSrc, skillFile.name);
       const sfDest = path.join(skillDest, skillFile.name);
       const exists = fs.existsSync(sfDest);
-
-      if (exists && !options.force) {
-        summary.skipped += 1;
-        if (!options.dryRun) {
-          options.installedFiles.push(sfDest);
-        }
-        continue;
-      }
 
       const rendered = renderTemplate(sfSrc, contentDir, options, `skills/${entry.name}`);
       if (rendered === null) {
