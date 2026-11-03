@@ -172,26 +172,28 @@ describe("upgrade cleanup", () => {
     fs.mkdirSync(commandsDir, { recursive: true });
     const content = tagged
       ? `---\nname: es-change-init\n---\n\nold prompt\n\n<!-- ${OWNERSHIP_MARKER} -->\n`
-      : "---\nname: es-change-init\n---\n\nuser-renamed file, never delete\n";
+      : "---\nname: es-change-init\n---\n\nold untagged file\n";
     fs.writeFileSync(path.join(commandsDir, "es-change-init.md"), content, "utf8");
   }
 
-  it("detects retired tagged artifacts as candidates and skips untagged same-named files", () => {
+  it("classifies retired names as retiredCandidates regardless of tag", () => {
     seedRetired(true);
     const toolRoot = path.join(tmpDir, ".opencode");
-    const { candidates } = computeCleanupCandidates(toolRoot, []);
-    assert.deepStrictEqual(candidates, ["commands/es-change-init.md"]);
+    const { candidates, retiredCandidates } = computeCleanupCandidates(toolRoot, []);
+    assert.deepStrictEqual(candidates, []);
+    assert.deepStrictEqual(retiredCandidates, ["commands/es-change-init.md"]);
   });
 
-  it("never treats untagged same-named files as candidates", () => {
+  it("classifies untagged retired names as retiredCandidates too", () => {
     seedRetired(false);
     const toolRoot = path.join(tmpDir, ".opencode");
-    const { candidates } = computeCleanupCandidates(toolRoot, []);
+    const { candidates, retiredCandidates } = computeCleanupCandidates(toolRoot, []);
     assert.deepStrictEqual(candidates, []);
+    assert.deepStrictEqual(retiredCandidates, ["commands/es-change-init.md"]);
   });
 
-  it("old-manifest entries that vanish from the new version become candidates when tagged", () => {
-    seedRetired(true);
+  it("old-manifest entries that vanish from the new version become tag-verified candidates", () => {
+    setupTmp();
     const toolRoot = path.join(tmpDir, ".opencode");
     const legacyRel = "agents/es-legacy.md";
     fs.mkdirSync(path.join(toolRoot, "agents"), { recursive: true });
@@ -207,19 +209,18 @@ describe("upgrade cleanup", () => {
       "utf8"
     );
     const { candidates } = computeCleanupCandidates(toolRoot, []);
-    assert.ok(candidates.includes(legacyRel), "manifest-listed tagged file is a candidate");
-    assert.ok(candidates.includes("commands/es-change-init.md"), "retired tagged file is a candidate");
+    assert.deepStrictEqual(candidates, [legacyRel]);
   });
 
-  it("non-interactive cleanup lists candidates without deleting", async () => {
+  it("non-interactive run auto-removes retired names", async () => {
     seedRetired(true);
     const toolRoot = path.join(tmpDir, ".opencode");
     const target = path.join(toolRoot, "commands", "es-change-init.md");
     const result = await runUpgradeCleanup(toolRoot, []);
-    assert.deepStrictEqual(result.candidates, ["commands/es-change-init.md"]);
-    assert.deepStrictEqual(result.deleted, []);
-    assert.deepStrictEqual(result.kept, ["commands/es-change-init.md"], "non-interactive run keeps the file (keep option)");
-    assert.strictEqual(fs.existsSync(target), true, "non-interactive run deletes nothing");
+    assert.deepStrictEqual(result.retiredCandidates, ["commands/es-change-init.md"]);
+    assert.deepStrictEqual(result.deleted, ["commands/es-change-init.md"]);
+    assert.deepStrictEqual(result.kept, []);
+    assert.strictEqual(fs.existsSync(target), false, "retired file is auto-removed");
   });
 
   it("dry-run cleanup deletes nothing", async () => {
@@ -227,7 +228,8 @@ describe("upgrade cleanup", () => {
     const toolRoot = path.join(tmpDir, ".opencode");
     const target = path.join(toolRoot, "commands", "es-change-init.md");
     const result = await runUpgradeCleanup(toolRoot, [], { dryRun: true });
-    assert.strictEqual(result.candidates.length, 1);
+    assert.strictEqual(result.retiredCandidates.length, 1);
+    assert.deepStrictEqual(result.deleted, []);
     assert.strictEqual(fs.existsSync(target), true);
   });
 });
@@ -240,31 +242,27 @@ describe("pre-manifest legacy cleanup", () => {
     // Untagged files from an install that predates the manifest and ownership tags.
     fs.writeFileSync(path.join(commandsDir, "es-change-init.md"), "---\nname: es-change-init\n---\n", "utf8");
     fs.writeFileSync(path.join(commandsDir, "es-change-review.md"), "---\nname: es-change-review\n---\n", "utf8");
+    fs.writeFileSync(path.join(commandsDir, "es-old-helper.md"), "---\nname: es-old-helper\n---\n", "utf8");
     fs.writeFileSync(path.join(commandsDir, "my-custom.md"), "user file\n", "utf8");
   }
 
-  it("surfaces untagged es- artifacts as legacy candidates when no manifest exists", () => {
+  it("separates retired names from the broad es-* scan when no manifest exists", () => {
     seedLegacy();
     const toolRoot = path.join(tmpDir, ".opencode");
-    const { manifestFound, candidates, legacyCandidates } = computeCleanupCandidates(toolRoot, []);
+    const { manifestFound, candidates, retiredCandidates, legacyCandidates } = computeCleanupCandidates(toolRoot, []);
 
     assert.strictEqual(manifestFound, false);
-    assert.deepStrictEqual(candidates, [], "untagged files are never tag-verified candidates");
-    assert.deepStrictEqual(legacyCandidates, [
+    assert.deepStrictEqual(candidates, []);
+    assert.deepStrictEqual(retiredCandidates, [
       "commands/es-change-init.md",
       "commands/es-change-review.md",
     ]);
+    assert.deepStrictEqual(legacyCandidates, ["commands/es-old-helper.md"]);
     assert.ok(!legacyCandidates.includes("commands/my-custom.md"), "non-es user files are ignored");
   });
 
   it("still surfaces retired-name untagged artifacts when a manifest exists", () => {
     seedLegacy();
-    // A non-retired es-* file should NOT be surfaced once a manifest exists
-    // (the broad pre-manifest scan is disabled), while retired names stay
-    // visible because they are specific, known easyspec artifacts.
-    const commandsDir = path.join(tmpDir, ".opencode", "commands");
-    fs.writeFileSync(path.join(commandsDir, "es-some-old-command.md"), "---\nname: es-some-old-command\n---\n", "utf8");
-
     const toolRoot = path.join(tmpDir, ".opencode");
     fs.mkdirSync(path.join(toolRoot, ".easyspec"), { recursive: true });
     fs.writeFileSync(
@@ -273,30 +271,39 @@ describe("pre-manifest legacy cleanup", () => {
       "utf8"
     );
 
-    const { legacyCandidates } = computeCleanupCandidates(toolRoot, []);
-    assert.deepStrictEqual(legacyCandidates, [
+    const { retiredCandidates, legacyCandidates } = computeCleanupCandidates(toolRoot, []);
+    assert.deepStrictEqual(retiredCandidates, [
       "commands/es-change-init.md",
       "commands/es-change-review.md",
     ]);
-    assert.ok(!legacyCandidates.includes("commands/es-some-old-command.md"));
+    // With a manifest present, the broad es-* scan is disabled, so the
+    // non-retired es-old-helper.md is not surfaced.
+    assert.deepStrictEqual(legacyCandidates, []);
   });
 
-  it("non-interactive cleanup keeps legacy candidates and deletes nothing", async () => {
+  it("non-interactive cleanup auto-removes retired names but keeps broad es-* files", async () => {
     seedLegacy();
     const toolRoot = path.join(tmpDir, ".opencode");
-    const target = path.join(toolRoot, "commands", "es-change-init.md");
+    const retiredTarget = path.join(toolRoot, "commands", "es-change-init.md");
+    const helperTarget = path.join(toolRoot, "commands", "es-old-helper.md");
 
     const result = await runUpgradeCleanup(toolRoot, []);
-    assert.strictEqual(result.legacyCandidates.length, 2);
-    assert.deepStrictEqual(result.deleted, []);
-    assert.ok(result.kept.includes("commands/es-change-init.md"));
-    assert.ok(result.kept.includes("commands/es-change-review.md"));
-    assert.strictEqual(fs.existsSync(target), true);
+    assert.deepStrictEqual(result.retiredCandidates, [
+      "commands/es-change-init.md",
+      "commands/es-change-review.md",
+    ]);
+    assert.deepStrictEqual(result.deleted, [
+      "commands/es-change-init.md",
+      "commands/es-change-review.md",
+    ]);
+    assert.deepStrictEqual(result.kept, ["commands/es-old-helper.md"]);
+    assert.strictEqual(fs.existsSync(retiredTarget), false, "retired file auto-removed");
+    assert.strictEqual(fs.existsSync(helperTarget), true, "non-retired es-* file kept");
   });
 });
 
 describe("retired names and flat-layout roots", () => {
-  it("detects es-change-review as a retired tagged artifact", () => {
+  it("detects es-change-review as a retired name (tagged or untagged)", () => {
     setupTmp();
     const commandsDir = path.join(tmpDir, ".opencode", "commands");
     fs.mkdirSync(commandsDir, { recursive: true });
@@ -305,8 +312,8 @@ describe("retired names and flat-layout roots", () => {
       `---\nname: es-change-review\n---\n\nold prompt\n\n<!-- ${OWNERSHIP_MARKER} -->\n`,
       "utf8"
     );
-    const { candidates } = computeCleanupCandidates(path.join(tmpDir, ".opencode"), []);
-    assert.deepStrictEqual(candidates, ["commands/es-change-review.md"]);
+    const { retiredCandidates } = computeCleanupCandidates(path.join(tmpDir, ".opencode"), []);
+    assert.deepStrictEqual(retiredCandidates, ["commands/es-change-review.md"]);
   });
 
   it("surfaces untagged es- prompts in a flat prompt directory", () => {
@@ -332,7 +339,7 @@ describe("retired names and flat-layout roots", () => {
     return path.join(homeDir, ".config", "Code", "User", "prompts");
   }
 
-  it("copilot global install records a separate prompts manifest and keeps stale retired prompts non-interactively", { skip: process.platform === "win32" }, () => {
+  it("copilot global install records a separate prompts manifest and auto-removes stale retired prompts", { skip: process.platform === "win32" }, () => {
     setupTmp();
     const promptDir = copilotUserPromptDir(fakeHome);
     assert.ok(promptDir, "unable to resolve copilot user prompt dir");
@@ -343,9 +350,8 @@ describe("retired names and flat-layout roots", () => {
 
     runCli("init --scope global --agent copilot --force --no-model-prompt 2>/dev/null");
 
-    // Non-interactive run deletes nothing, but the external prompts root gets
-    // its own manifest and the stale retired prompt is still on disk.
-    assert.strictEqual(fs.existsSync(stale), true, "non-interactive run must not delete");
+    // The stale retired prompt is auto-removed even in a non-interactive run.
+    assert.strictEqual(fs.existsSync(stale), false, "stale retired prompt should be auto-removed");
 
     const manifest = readManifest(promptDir);
     assert.ok(manifest, "copilot global prompts dir should get its own manifest");

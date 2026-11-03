@@ -96,16 +96,22 @@ function defaultAgentSourcePath() {
 }
 
 function printHelp() {
-  console.log(`easyspec-init
+  console.log(`easyspec — install easyspec prompts, agents, and skills for your coding agent
+
+\`easyspec\` and \`easyspec-init\` are two names for the same command (aliases).
+
+Commands:
+  init   Install easyspec into a project or your user profile, and clean up
+         artifacts retired by the new version.
+  sync   Refresh this repo's template definitions from a live install
+         (developer/maintainer use). Copies prompt and agent files from
+         --source-prompts / --source-agents into templates/<profile>/.
 
 Usage:
   easyspec init [options]
   easyspec sync [options]
-  easyspec-init init [options]
-  easyspec-init sync [options]
-  easyspec-init --help
 
-Options:
+init options:
   --agent <copilot,opencode,claude-code>
                                   Coding agent(s) to install (comma-separated;
                                   prompts interactively if omitted)
@@ -115,15 +121,21 @@ Options:
                                   workspace root with a confirmed docs folder
                                   (default: easyspec-docs)
   --force                         Overwrite existing files
-  --dry-run                       Show what would be copied
-  --source-prompts <path>         Source prompt directory for sync command
-  --source-agents <path>          Source agent directory for sync command
-  --template-profile <name>       Template profile to refresh (default: copilot)
-  --include-agents <a,b,c>        Optional explicit agent list for sync
+  --dry-run                       Show what would be copied without writing
   --tech-model <name>             Model for technical agents (default: auto)
   --non-tech-model <name>         Model for non-technical agents (default: auto)
   --model-preset <balanced|speed|quality>
                                   Apply preset model pair before explicit overrides
+
+sync options:
+  --template-profile <name>       Template profile to refresh (default: copilot)
+  --source-prompts <path>         Source prompt directory to copy prompts from
+  --source-agents <path>          Source agent directory to copy agents from
+  --include-agents <a,b,c>        Optional explicit agent list for sync
+  --force                         Overwrite existing template files
+  --dry-run                       Show what would be copied without writing
+
+General:
   --help                          Show this help
 
 Examples:
@@ -132,7 +144,7 @@ Examples:
   easyspec init --agent copilot,claude-code --scope project
   easyspec init --agent opencode --scope global
   easyspec init --scope project --model-preset balanced
-  easyspec sync --template-profile core
+  easyspec sync --template-profile copilot --source-prompts <dir> --source-agents <dir>
 `);
 }
 
@@ -980,12 +992,13 @@ export async function runCli(argv) {
     }
     console.log(`  copied=${report.copied} overwritten=${report.overwritten} skipped=${report.skipped}`);
     for (const { root, result } of report.cleanups || []) {
+      const retiredCount = result.retiredCandidates?.length ?? 0;
       const legacyCount = result.legacyCandidates?.length ?? 0;
-      if (result.candidates.length === 0 && legacyCount === 0) {
+      if (result.candidates.length === 0 && retiredCount === 0 && legacyCount === 0) {
         continue;
       }
       const where = root === report.rootPath ? "" : ` (${root})`;
-      console.log(`  upgrade cleanup${where}: deleted=${result.deleted.length} kept=${result.kept.length} legacy=${legacyCount}`);
+      console.log(`  upgrade cleanup${where}: deleted=${result.deleted.length} kept=${result.kept.length} retired=${retiredCount} legacy=${legacyCount}`);
       for (const rel of result.deleted) {
         console.log(`    deleted: ${rel}`);
       }

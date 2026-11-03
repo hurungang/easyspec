@@ -12,15 +12,14 @@ import { fileHasTag } from "./ownership.mjs";
  * directory (e.g. `<workspace>/.github/.easyspec/manifest.json`).
  *
  * Cleanup is conservative:
- * - Tag-verified candidates: files that carry the ownership tag and are either
- *   listed in the old manifest or match a retired artifact name, and are no
- *   longer produced by the new version. Deleted only after user confirmation.
- * - Untagged easyspec artifacts: files without the tag that match a retired
- *   name (surfaced regardless of manifest, since they can linger from installs
- *   that predate ownership tagging), or — for installs that predate the
- *   manifest — any `es-*.md` artifact in an install directory. Surfaced
- *   separately with an explicit warning and confirmation, never mixed with
- *   tag-verified candidates.
+ * - Retired artifacts (specific, known names in `RETIRED_ARTIFACT_PATTERNS` such
+ *   as `es-change-init` / `es-change-review`) are removed automatically on
+ *   upgrade — interactively or not — with a clear log. These names are
+ *   unambiguous easyspec artifacts.
+ * - Tag-verified obsolete files (tagged, listed in the old manifest, no longer
+ *   produced) and broad untagged `es-*` artifacts from pre-manifest installs are
+ *   only removed after interactive confirmation; non-interactive runs list them
+ *   without deleting.
  * - Anything else — including user files that share an easyspec name — is never
  *   deleted or overwritten.
  */
@@ -128,8 +127,10 @@ function isRetiredName(relPath) {
 
 /**
  * Compute deletion candidates: files present on disk and not part of the new
- * artifact set, split into tag-verified candidates and untagged legacy
- * candidates (see the module header for the safety rules).
+ * artifact set, split into three buckets (see the module header):
+ * - `retiredCandidates`: known retired names — auto-removed on upgrade.
+ * - `candidates`: tag-verified obsolete files listed in the old manifest.
+ * - `legacyCandidates`: untagged `es-*` artifacts from pre-manifest installs.
  */
 export function computeCleanupCandidates(rootPath, newRelPaths, { layout = "tool" } = {}) {
   const newSet = new Set(newRelPaths);
@@ -137,6 +138,7 @@ export function computeCleanupCandidates(rootPath, newRelPaths, { layout = "tool
   const oldPaths = new Set((oldManifest?.files || []).map((f) => f.path));
 
   const candidates = [];
+  const retiredCandidates = [];
   const legacyCandidates = [];
   const seen = new Set();
   for (const abs of walkFiles(rootPath)) {
@@ -149,47 +151,62 @@ export function computeCleanupCandidates(rootPath, newRelPaths, { layout = "tool
     const inOldManifest = oldPaths.has(rel);
     const retired = isRetiredName(rel);
 
-    if ((inOldManifest || retired) && tagged) {
+    if (retired) {
+      // A known retired name (e.g. es-change-init, es-change-review) is an
+      // unambiguous easyspec artifact — auto-removed regardless of tag.
+      retiredCandidates.push(rel);
+    } else if (inOldManifest && tagged) {
       candidates.push(rel);
-      continue;
-    }
-
-    // Untagged easyspec artifacts are never auto-deleted, but are surfaced for
-    // explicitly confirmed cleanup. Two cases:
-    // - a known retired name (specific easyspec names, offered regardless of
-    //   manifest — these can linger from installs that predate ownership tags);
-    // - a broad `es-*` scan for installs that predate the manifest entirely.
-    const retiredUntagged = retired && !tagged;
-    const legacyUntagged = !oldManifest && !tagged && isLegacyEasyspecArtifact(rel, layout);
-    if (retiredUntagged || legacyUntagged) {
+    } else if (!oldManifest && !tagged && isLegacyEasyspecArtifact(rel, layout)) {
       legacyCandidates.push(rel);
     }
   }
   return {
     manifestFound: oldManifest !== null,
     candidates: candidates.sort(),
+    retiredCandidates: retiredCandidates.sort(),
     legacyCandidates: legacyCandidates.sort(),
   };
 }
 
 /**
  * Run upgrade cleanup for an install root.
- * - Non-interactive or --dry-run: lists candidates without deleting.
- * - Interactive: batch confirm, then per-file confirm with keep option.
- * Tag-verified candidates are handled first; untagged easyspec artifacts
- * (retired names and pre-manifest `es-*` files) are handled separately with an
- * explicit warning.
- * Returns { manifestFound, candidates, legacyCandidates, deleted, kept }.
+ * - Known retired names are removed automatically (interactive or not), with a
+ *   clear log — they are unambiguous easyspec artifacts.
+ * - Tag-verified obsolete files and broad `es-*` legacy files are removed only
+ *   after interactive confirmation; non-interactive runs list them without
+ *   deleting.
+ * - `--dry-run` lists every candidate and deletes nothing.
+ * Returns { manifestFound, candidates, retiredCandidates, legacyCandidates, deleted, kept }.
  */
 export async function runUpgradeCleanup(rootPath, newRelPaths, { dryRun = false, layout = "tool" } = {}) {
-  const { manifestFound, candidates, legacyCandidates } = computeCleanupCandidates(rootPath, newRelPaths, { layout });
-  const result = { manifestFound, candidates, legacyCandidates, deleted: [], kept: [] };
+  const { manifestFound, candidates, retiredCandidates, legacyCandidates } = computeCleanupCandidates(rootPath, newRelPaths, { layout });
+  const result = { manifestFound, candidates, retiredCandidates, legacyCandidates, deleted: [], kept: [] };
 
-  if (candidates.length === 0 && legacyCandidates.length === 0) {
+  if (candidates.length === 0 && retiredCandidates.length === 0 && legacyCandidates.length === 0) {
     return result;
   }
 
   const interactive = process.stdin.isTTY && !dryRun;
+
+  // Known retired names are auto-removed (interactive or not) — they are
+  // specific, unambiguous easyspec artifacts. Log clearly so it is never silent.
+  if (retiredCandidates.length > 0) {
+    if (dryRun) {
+      console.log(`[easyspec-init] upgrade cleanup: would remove ${retiredCandidates.length} retired easyspec file(s) under ${rootPath}:`);
+    } else {
+      console.log(`[easyspec-init] upgrade cleanup: removing ${retiredCandidates.length} retired easyspec file(s) under ${rootPath}:`);
+    }
+    for (const rel of retiredCandidates) {
+      if (dryRun) {
+        console.log(`  - ${rel}`);
+      } else {
+        fs.rmSync(path.join(rootPath, rel));
+        result.deleted.push(rel);
+        console.log(`  - removed ${rel}`);
+      }
+    }
+  }
 
   if (!interactive) {
     if (candidates.length > 0) {
