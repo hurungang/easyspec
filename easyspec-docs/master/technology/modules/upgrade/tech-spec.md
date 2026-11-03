@@ -8,8 +8,8 @@ The upgrade module (`src/upgrade.mjs`, introduced by the rework) provides tag-ve
 ## Technical Design
 
 - **Manifest** — recorded at `.easyspec/manifest.json` inside the installed tool directory (`MANIFEST_DIR`/`MANIFEST_FILE`, path via `manifestPath`); lists destination paths and a content identity (`hashFile`) per installed file; read on subsequent installs to determine prior state.
-- **Candidate classification** — `computeCleanupCandidates` marks a prior artifact as a deletion candidate when it is retired by name (matched against `RETIRED_ARTIFACT_PATTERNS`, e.g. `es-change-init`) **or** listed in the old manifest, and is tag-verified on disk. This means retired artifacts are offered even when no prior manifest exists.
-- **Legacy classification** — when there is no manifest at all (installs that predate ownership tagging), untagged files under `commands/`, `prompts/`, `agents/`, or `skills/` whose basename matches `es-*.md` are returned separately as `legacyCandidates`. Non-`es-` user files are never included, and these are never mixed with tag-verified candidates.
+- **Candidate classification** — `computeCleanupCandidates` marks a prior artifact as a deletion candidate when it is retired by name (matched against `RETIRED_ARTIFACT_PATTERNS`, e.g. `es-change-init`, `es-change-review`) **or** listed in the old manifest, and is tag-verified on disk. This means retired artifacts are offered even when no prior manifest exists.
+- **Legacy classification** — untagged files without the ownership tag are surfaced separately as `legacyCandidates`: (a) files matching a retired name are offered regardless of manifest (they can linger from installs that predate ownership tagging); (b) when there is no manifest at all, any untagged file under `commands/`, `prompts/`, `agents/`, or `skills/` whose basename matches `es-*.md` is offered. Non-`es-` user files are never included, and these are never mixed with tag-verified candidates. A flat prompt directory (Copilot's global user prompts dir) is supported via the `layout` option.
 - **Interactive cleanup** — `runUpgradeCleanup` runs per-file confirmation with a keep option via `@clack/prompts`; legacy candidates get a separate explicit warning before deletion. It no-ops safely when non-interactive or `--dry-run`.
 
 ## Code Reference Map
@@ -18,7 +18,7 @@ The upgrade module (`src/upgrade.mjs`, introduced by the rework) provides tag-ve
 |--------|------|-------------|------|
 | `MANIFEST_DIR` | constant | Manifest directory name (`.easyspec`) inside the installed tool directory | `src/upgrade.mjs` |
 | `MANIFEST_FILE` | constant | Manifest file name (`manifest.json`) | `src/upgrade.mjs` |
-| `RETIRED_ARTIFACT_PATTERNS` | constant | Patterns matching known retired artifact names (e.g. `es-change-init`) | `src/upgrade.mjs` |
+| `RETIRED_ARTIFACT_PATTERNS` | constant | Patterns matching known retired artifact names (e.g. `es-change-init`, `es-change-review`) | `src/upgrade.mjs` |
 | `manifestPath` | function | Resolves the manifest path for an install root | `src/upgrade.mjs` |
 | `readManifest` | function | Reads the prior install manifest | `src/upgrade.mjs` |
 | `writeManifest` | function | Records installed file paths (with `--dry-run` awareness) after an install | `src/upgrade.mjs` |
@@ -30,4 +30,4 @@ The upgrade module (`src/upgrade.mjs`, introduced by the rework) provides tag-ve
 
 ## Data Flow
 
-Prior install → `.easyspec/manifest.json` → on re-install: read manifest + stat/read each listed file (tag verification via `src/ownership.mjs`) → compare against new artifact set + retired-name patterns → interactive per-file confirm → delete or keep. When no manifest exists, untagged `es-*` install files are classified separately as legacy candidates and require an explicit legacy confirmation.
+Prior install → `.easyspec/manifest.json` → on re-install: read manifest + stat/read each listed file (tag verification via `src/ownership.mjs`) → compare against new artifact set + retired-name patterns → interactive per-file confirm → delete or keep. Untagged files matching retired names are offered for deletion regardless of manifest; when no manifest exists, other untagged `es-*` install files are classified separately as legacy candidates and require an explicit legacy confirmation.

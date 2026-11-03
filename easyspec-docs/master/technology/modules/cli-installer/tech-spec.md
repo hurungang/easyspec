@@ -15,7 +15,7 @@ Post-rework responsibilities added on top of the preserved pipeline: config scaf
 - **Copy policy** — `copyFileWithPolicy` enforces skip/overwrite semantics, `--force` aware.
 - **Model selection** — `applyModelSelectionsToRoot` / `upsertModelInFrontmatter` apply technical/non-technical model presets to installed agents.
 - **Docs-folder confirmation** — `confirmDocsFolder` runs a yes/no confirm on the default (`easyspec-docs`) with optional text override; non-TTY and `--dry-run` skip straight to the default.
-- **Upgrade path** — on `init` over an existing install, the installer presents retired tagged artifacts for confirmed deletion (prior manifest entries or known retired names such as `es-change-init`) via `src/upgrade.mjs`.
+- **Upgrade path** — on `init` over an existing install, the installer presents retired tagged artifacts for confirmed deletion (prior manifest entries or known retired names such as `es-change-init` and `es-change-review`) via `src/upgrade.mjs`. Cleanup and manifest recording run per distinct install root, so Copilot's global prompts directory (which sits outside `~/.copilot`) is cleaned up and recorded independently.
 
 ## Code Reference Map
 
@@ -27,7 +27,8 @@ Post-rework responsibilities added on top of the preserved pipeline: config scaf
 | `getProjectRoot` | function | Resolves per-tool project install directory | `src/cli.mjs` |
 | `getHomeRoot` | function | Resolves per-tool home (global) install directory | `src/cli.mjs` |
 | `resolveGlobalPromptDir` | function | Global prompt directory per tool (incl. platform-specific copilot path) | `src/cli.mjs` |
-| `installToRoot` | function | Installs prompts, agents, and skills into one target root | `src/cli.mjs` |
+| `installToRoot` | function | Installs prompts, agents, and skills into one target root, then runs upgrade cleanup and records a manifest per distinct install root | `src/cli.mjs` |
+| `collectInstallRoots` | function | Groups written files into distinct install roots (handles Copilot's external global prompts dir) | `src/cli.mjs` |
 | `renderEntitiesFromContent` | function | Renders prompts/agents from generic template + body content; tagging write site | `src/cli.mjs` |
 | `renderTemplate` | function | Substitutes `{{body}}` (and template placeholders) into a generic template | `src/cli.mjs` |
 | `parseFrontmatter` | function | Extracts name/description/model/tools frontmatter from body files | `src/cli.mjs` |

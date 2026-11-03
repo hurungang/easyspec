@@ -494,6 +494,36 @@ function renderDirectoryContents(templateDir, destDir, contentDir, options) {
   return summary;
 }
 
+function isSubpathOf(child, parent) {
+  const rel = path.relative(parent, child);
+  return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+}
+
+/**
+ * Group the files just written into distinct install roots. Most agents write
+ * everything under one root; Copilot global scope writes prompts to the VS Code
+ * user prompt directory, which sits outside the `~/.copilot` agents root, so it
+ * gets a separate cleanup pass and manifest.
+ */
+function collectInstallRoots(rootPath, promptsDest, installedFiles) {
+  const separatePromptsRoot = promptsDest && !isSubpathOf(promptsDest, rootPath);
+  const roots = new Map([[rootPath, []]]);
+  if (separatePromptsRoot) {
+    roots.set(promptsDest, []);
+  }
+
+  for (const abs of installedFiles || []) {
+    const root = separatePromptsRoot && isSubpathOf(abs, promptsDest) ? promptsDest : rootPath;
+    const rel = path.relative(root, abs);
+    if (rel === "" || rel.startsWith("..") || path.isAbsolute(rel)) {
+      continue;
+    }
+    roots.get(root).push(rel);
+  }
+
+  return [...roots.entries()].map(([root, relPaths]) => ({ root, relPaths: relPaths.sort() }));
+}
+
 async function installToRoot(rootPath, promptsDest, sourceRoot, contentRoot, agent, options) {
   const profile = TOOL_PROFILES[agent];
   const promptsSrc = path.join(sourceRoot, "prompts");
@@ -515,17 +545,22 @@ async function installToRoot(rootPath, promptsDest, sourceRoot, contentRoot, age
   const contentSkillsDir = path.join(contentRoot, "skills");
   mergeSummary(summary, copySkillDirectory(contentSkillsDir, skillsDest, contentRoot, options));
 
-  // Upgrade cleanup: offer to delete retired tagged files from prior installs.
-  const newRelPaths = (options.installedFiles || []).map((abs) => path.relative(rootPath, abs));
-  options.cleanup = await runUpgradeCleanup(rootPath, newRelPaths, { dryRun: options.dryRun });
-
-  // Record the install manifest (new-version side of the upgrade comparison).
-  writeManifest(rootPath, newRelPaths, { dryRun: options.dryRun });
+  // Upgrade cleanup + manifest, one pass per distinct install root. A "tool"
+  // root has agents/prompts/skills subdirectories; an external prompts dir is a
+  // flat root. See `collectInstallRoots`.
+  const cleanups = [];
+  for (const { root, relPaths } of collectInstallRoots(rootPath, promptsDest, options.installedFiles)) {
+    const layout = root === rootPath ? "tool" : "flat";
+    const result = await runUpgradeCleanup(root, relPaths, { dryRun: options.dryRun, layout });
+    cleanups.push({ root, result });
+    writeManifest(root, relPaths, { dryRun: options.dryRun });
+  }
 
   return {
     rootPath,
     promptsDest,
     agent,
+    cleanups,
     ...summary,
   };
 }
@@ -944,14 +979,17 @@ export async function runCli(argv) {
       console.log(`  prompts -> ${report.promptsDest}`);
     }
     console.log(`  copied=${report.copied} overwritten=${report.overwritten} skipped=${report.skipped}`);
-    if (report.cleanup && (report.cleanup.candidates.length > 0 || (report.cleanup.legacyCandidates?.length ?? 0) > 0)) {
-      const { deleted, kept } = report.cleanup;
-      const legacyCount = report.cleanup.legacyCandidates?.length ?? 0;
-      console.log(`  upgrade cleanup: deleted=${deleted.length} kept=${kept.length} legacy=${legacyCount}`);
-      for (const rel of deleted) {
+    for (const { root, result } of report.cleanups || []) {
+      const legacyCount = result.legacyCandidates?.length ?? 0;
+      if (result.candidates.length === 0 && legacyCount === 0) {
+        continue;
+      }
+      const where = root === report.rootPath ? "" : ` (${root})`;
+      console.log(`  upgrade cleanup${where}: deleted=${result.deleted.length} kept=${result.kept.length} legacy=${legacyCount}`);
+      for (const rel of result.deleted) {
         console.log(`    deleted: ${rel}`);
       }
-      for (const rel of kept) {
+      for (const rel of result.kept) {
         console.log(`    kept: ${rel}`);
       }
     }

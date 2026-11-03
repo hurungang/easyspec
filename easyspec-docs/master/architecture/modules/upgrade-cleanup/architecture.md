@@ -6,7 +6,7 @@ Upgrade cleanup keeps a project's installed easyspec artifacts in sync with the 
 ## Responsibilities
 
 - Compare previously installed easyspec files against the new version's manifest.
-- Identify **deletion candidates**: files that are obsolete and carry the easyspec ownership tag (including retired artifacts such as `es-change-init`).
+- Identify **deletion candidates**: files that are obsolete and carry the easyspec ownership tag (including retired artifacts such as `es-change-init` and `es-change-review`).
 - Present each candidate for user confirmation, with a per-file or batched keep option.
 - Skip declined deletions without error.
 
@@ -25,6 +25,6 @@ flowchart TD
 
 ## Safety Contract
 
-- Files **without** the ownership tag — including user files that share a name with an easyspec artifact — are never deleted or overwritten automatically. On pre-manifest installs, untagged `es-*` artifacts are offered for deletion only through a separate, explicitly confirmed legacy path.
+- Files **without** the ownership tag — including user files that share a name with an easyspec artifact — are never deleted or overwritten automatically. On pre-manifest installs, untagged `es-*` artifacts are offered for deletion only through a separate, explicitly confirmed legacy path; untagged files matching a known retired name are offered the same way even when a manifest exists.
 - The ownership tag format is version-stable, so cleanup recognizes artifacts tagged by earlier easyspec versions.
 - Legacy uninstall (e.g. removing `es-change-init`/`es-change-review` artifacts from older installs) reuses tag detection and confirmation; when no manifest or tag exists, the explicit legacy confirmation path applies.

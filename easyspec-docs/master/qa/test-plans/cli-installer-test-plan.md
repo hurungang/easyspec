@@ -12,7 +12,7 @@ All automated tests live in the single Node built-in test-runner suite (`npm tes
 
 Covers template content and the installer rendering pipeline:
 
-- Rename completeness: `es-init` body present and renders per tool profile; `es-change-init` absent from all template content and rendered output.
+- Rename completeness: `es-init` body present and renders per tool profile; retired command names (`es-change-init`, `es-change-review`) absent from all template content and rendered output.
 - Path hygiene: no hardcoded `docs/` project paths in template bodies; the only allowed legacy reference is `docs/config.yaml` inside the migration flow. All docs paths resolve from `easyspec-config.yaml`.
 - Ownership-tag presence and frontmatter integrity at every write site.
 - `es-` prefix and kebab-case cross-reference consistency.
@@ -43,11 +43,11 @@ CLI-level end-to-end coverage (drives the installer against temp workspaces; `te
 
 - Project install (opencode profile, non-TTY): tags every written file, scaffolds root `easyspec-config.yaml` with default `docs_folder: easyspec-docs`, writes the install manifest, leaves a pre-existing `docs/` folder untouched.
 - Non-interactive legacy install: when only `docs/config.yaml` exists, no root config is scaffolded and the legacy config is preserved (migration requires interactive confirmation). A third-party `docs/config.yaml` that is not an easyspec config does not block normal scaffolding.
-- All three profiles produce only tagged files; install renders `es-init` and leaves no `es-change-init` artifact.
-- Global scope creates no project config; `--dry-run` writes nothing; re-install refreshes the manifest.
+- All three profiles produce only tagged files; install renders `es-init` and leaves no `es-change-init` or `es-change-review` artifact.
+- Global scope creates no project config; `--dry-run` writes nothing; re-install refreshes the manifest. Copilot global scope records a separate manifest in its external prompts directory.
 - Custom `docs_folder` honored at the CLI level (no `easyspec-docs` created, existing config not clobbered); malformed config does not crash init.
-- Upgrade cleanup: candidate classification (retired-by-name plus old-manifest entries, tagged-only); untagged same-named files are never tag-verified candidates and are never deleted automatically; non-interactive run keeps all candidates (`kept` populated, nothing deleted); dry-run no-op.
-- Pre-manifest legacy cleanup: with no install manifest, untagged `es-*` artifacts in install dirs (`commands/`, `prompts/`, `agents/`, `skills/`) are surfaced separately as legacy candidates; non-`es-` user files are ignored; non-interactive/dry-run keep them; interactive runs require explicit confirmation before deletion.
+- Upgrade cleanup: candidate classification (retired-by-name plus old-manifest entries, tagged-only); untagged same-named files are never tag-verified candidates and are never deleted automatically; untagged files matching a retired name (`es-change-init`, `es-change-review`) are surfaced regardless of manifest; non-interactive run keeps all candidates (`kept` populated, nothing deleted); dry-run no-op.
+- Pre-manifest legacy cleanup: with no install manifest, untagged `es-*` artifacts in install dirs (`commands/`, `prompts/`, `agents/`, `skills/`) are surfaced separately as legacy candidates; flat prompt directories (Copilot's global prompts dir) are covered via the `layout` option; non-`es-` user files are ignored; non-interactive/dry-run keep them; interactive runs require explicit confirmation before deletion.
 
 ## 5. Manual E2E (not automated)
 

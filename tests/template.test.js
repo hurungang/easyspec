@@ -334,14 +334,18 @@ describe("docs-folder migration integrity", () => {
     assert.deepStrictEqual(offenders, [], `hardcoded docs/ paths in: ${offenders.join(", ")}`);
   });
 
-  it("no template content references es-change-init", () => {
+  it("no template content references retired command names (es-change-init, es-change-review)", () => {
     const offenders = [];
     for (const file of contentFiles(contentDir)) {
+      const rel = path.relative(contentDir, file);
       if (readFile(file).includes("es-change-init")) {
-        offenders.push(path.relative(contentDir, file));
+        offenders.push(`${rel} (es-change-init)`);
+      }
+      if (readFile(file).includes("es-change-review")) {
+        offenders.push(`${rel} (es-change-review)`);
       }
     }
-    assert.deepStrictEqual(offenders, [], `es-change-init references in: ${offenders.join(", ")}`);
+    assert.deepStrictEqual(offenders, [], `retired command references in: ${offenders.join(", ")}`);
   });
 
   it("agents and skill instruct reading the docs folder from the root config", () => {

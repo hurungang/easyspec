@@ -257,8 +257,14 @@ describe("pre-manifest legacy cleanup", () => {
     assert.ok(!legacyCandidates.includes("commands/my-custom.md"), "non-es user files are ignored");
   });
 
-  it("does not surface legacy candidates when a manifest exists", () => {
+  it("still surfaces retired-name untagged artifacts when a manifest exists", () => {
     seedLegacy();
+    // A non-retired es-* file should NOT be surfaced once a manifest exists
+    // (the broad pre-manifest scan is disabled), while retired names stay
+    // visible because they are specific, known easyspec artifacts.
+    const commandsDir = path.join(tmpDir, ".opencode", "commands");
+    fs.writeFileSync(path.join(commandsDir, "es-some-old-command.md"), "---\nname: es-some-old-command\n---\n", "utf8");
+
     const toolRoot = path.join(tmpDir, ".opencode");
     fs.mkdirSync(path.join(toolRoot, ".easyspec"), { recursive: true });
     fs.writeFileSync(
@@ -268,7 +274,11 @@ describe("pre-manifest legacy cleanup", () => {
     );
 
     const { legacyCandidates } = computeCleanupCandidates(toolRoot, []);
-    assert.deepStrictEqual(legacyCandidates, []);
+    assert.deepStrictEqual(legacyCandidates, [
+      "commands/es-change-init.md",
+      "commands/es-change-review.md",
+    ]);
+    assert.ok(!legacyCandidates.includes("commands/es-some-old-command.md"));
   });
 
   it("non-interactive cleanup keeps legacy candidates and deletes nothing", async () => {
@@ -282,5 +292,64 @@ describe("pre-manifest legacy cleanup", () => {
     assert.ok(result.kept.includes("commands/es-change-init.md"));
     assert.ok(result.kept.includes("commands/es-change-review.md"));
     assert.strictEqual(fs.existsSync(target), true);
+  });
+});
+
+describe("retired names and flat-layout roots", () => {
+  it("detects es-change-review as a retired tagged artifact", () => {
+    setupTmp();
+    const commandsDir = path.join(tmpDir, ".opencode", "commands");
+    fs.mkdirSync(commandsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(commandsDir, "es-change-review.md"),
+      `---\nname: es-change-review\n---\n\nold prompt\n\n<!-- ${OWNERSHIP_MARKER} -->\n`,
+      "utf8"
+    );
+    const { candidates } = computeCleanupCandidates(path.join(tmpDir, ".opencode"), []);
+    assert.deepStrictEqual(candidates, ["commands/es-change-review.md"]);
+  });
+
+  it("surfaces untagged es- prompts in a flat prompt directory", () => {
+    setupTmp();
+    const promptsDir = path.join(tmpDir, "prompts");
+    fs.mkdirSync(promptsDir, { recursive: true });
+    fs.writeFileSync(path.join(promptsDir, "es-old-thing.prompt.md"), "---\nname: es-old-thing\n---\n", "utf8");
+    fs.writeFileSync(path.join(promptsDir, "my-prompt.prompt.md"), "user prompt\n", "utf8");
+
+    const { candidates, legacyCandidates } = computeCleanupCandidates(promptsDir, [], { layout: "flat" });
+    assert.deepStrictEqual(candidates, []);
+    assert.deepStrictEqual(legacyCandidates, ["es-old-thing.prompt.md"]);
+  });
+
+  function copilotUserPromptDir(homeDir) {
+    if (process.platform === "win32") {
+      const appData = process.env.APPDATA;
+      return appData ? path.join(appData, "Code", "User", "prompts") : null;
+    }
+    if (process.platform === "darwin") {
+      return path.join(homeDir, "Library", "Application Support", "Code", "User", "prompts");
+    }
+    return path.join(homeDir, ".config", "Code", "User", "prompts");
+  }
+
+  it("copilot global install records a separate prompts manifest and keeps stale retired prompts non-interactively", { skip: process.platform === "win32" }, () => {
+    setupTmp();
+    const promptDir = copilotUserPromptDir(fakeHome);
+    assert.ok(promptDir, "unable to resolve copilot user prompt dir");
+    fs.mkdirSync(promptDir, { recursive: true });
+    fs.rmSync(path.join(promptDir, ".easyspec"), { recursive: true, force: true });
+    const stale = path.join(promptDir, "es-change-review.prompt.md");
+    fs.writeFileSync(stale, "---\nname: es-change-review\n---\n", "utf8");
+
+    runCli("init --scope global --agent copilot --force --no-model-prompt 2>/dev/null");
+
+    // Non-interactive run deletes nothing, but the external prompts root gets
+    // its own manifest and the stale retired prompt is still on disk.
+    assert.strictEqual(fs.existsSync(stale), true, "non-interactive run must not delete");
+
+    const manifest = readManifest(promptDir);
+    assert.ok(manifest, "copilot global prompts dir should get its own manifest");
+    assert.ok(manifest.files.some((f) => f.path === "es-init.prompt.md"), "es-init prompt recorded in prompts manifest");
+    assert.ok(!manifest.files.some((f) => f.path === "es-change-review.prompt.md"), "stale prompt not in new manifest");
   });
 });
