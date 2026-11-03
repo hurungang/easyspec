@@ -117,6 +117,26 @@ describe("install tagging, config scaffolding, and manifest", () => {
     assert.strictEqual(manifest.files.length, INSTALLED_COUNT, "re-install updated the manifest");
   });
 
+  it("re-install without --force keeps the full manifest and flags nothing obsolete", () => {
+    setupTmp();
+    runCli("init --scope project --agent opencode --force --no-model-prompt 2>/dev/null");
+    const toolRoot = path.join(tmpDir, ".opencode");
+    const manifestFile = manifestPath(toolRoot);
+
+    // Re-install WITHOUT --force: existing files are skipped (not overwritten),
+    // but the manifest must still record the full artifact set.
+    runCli("init --scope project --agent opencode --no-model-prompt 2>/dev/null");
+
+    const manifest = JSON.parse(fs.readFileSync(manifestFile, "utf8"));
+    assert.strictEqual(manifest.files.length, INSTALLED_COUNT, "manifest must keep the full file set");
+
+    const relPaths = manifest.files.map((f) => f.path);
+    const { candidates, retiredCandidates, legacyCandidates } = computeCleanupCandidates(toolRoot, relPaths);
+    assert.deepStrictEqual(candidates, [], "current files must not be flagged as obsolete");
+    assert.deepStrictEqual(retiredCandidates, [], "no retired files seeded");
+    assert.deepStrictEqual(legacyCandidates, [], "no legacy files seeded");
+  });
+
   it("global scope does not create a project config", () => {
     setupTmp();
     runCli("init --scope global --agent opencode --force --no-model-prompt 2>/dev/null");

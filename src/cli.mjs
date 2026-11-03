@@ -377,6 +377,11 @@ function renderEntitiesFromContent(templateDir, destDir, contentDir, entityType,
 
     if (exists && !options.force) {
       summary.skipped += 1;
+      // Still part of the artifact set — record it so upgrade cleanup and the
+      // manifest see the full intended file set, not just freshly written files.
+      if (!options.dryRun) {
+        options.installedFiles.push(destPath);
+      }
       continue;
     }
 
@@ -425,6 +430,9 @@ function copySkillDirectory(srcSkillDir, destSkillDir, contentDir, options) {
 
       if (exists && !options.force) {
         summary.skipped += 1;
+        if (!options.dryRun) {
+          options.installedFiles.push(sfDest);
+        }
         continue;
       }
 
