@@ -548,7 +548,7 @@ describe("CLI e2e", () => {
     }
   });
 
-  it("copilot global installs prompts to VS Code user dir and agents/skills under ~/.copilot", { skip: process.platform === "win32" }, () => {
+  it("copilot global installs prompts to both VS Code user dir and ~/.copilot, plus agents/skills under ~/.copilot", { skip: process.platform === "win32" }, () => {
     setupTmp();
     const fakeHome = path.join(rootDir, "tests", ".fakehome");
     runCli("init --scope global --agent copilot --force --no-model-prompt 2>/dev/null");
@@ -558,11 +558,16 @@ describe("CLI e2e", () => {
     for (const prompt of PROMPTS) {
       assert.ok(fs.existsSync(path.join(promptDir, `${prompt}.prompt.md`)), `missing global prompt ${prompt}.prompt.md`);
     }
+    for (const prompt of PROMPTS) {
+      assert.ok(
+        fs.existsSync(path.join(fakeHome, ".copilot", "prompts", `${prompt}.prompt.md`)),
+        `missing copilot CLI prompt ${prompt}.prompt.md`,
+      );
+    }
     for (const agent of AGENTS) {
       assert.ok(fs.existsSync(path.join(fakeHome, ".copilot", "agents", `${agent}.md`)), `missing global agent ${agent}.md`);
     }
     assert.ok(fs.existsSync(path.join(fakeHome, ".copilot", "skills", "es-change-lifecycle", "SKILL.md")), "missing global skill");
-    assert.ok(!fs.existsSync(path.join(fakeHome, ".copilot", "prompts")), "copilot prompts should not go under ~/.copilot");
   });
 
   it("opencode global installs commands, agents, skills under ~/.config/opencode", { skip: process.platform === "win32" }, () => {

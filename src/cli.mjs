@@ -255,12 +255,20 @@ function getHomeRoot(agent) {
   return path.join(os.homedir(), profile.homeDir);
 }
 
-function resolveGlobalPromptDir(agent, homeRoot) {
-  if (agent === "copilot") {
-    return copilotUserPromptDir();
-  }
+function resolveGlobalPromptDirs(agent, homeRoot) {
   const profile = TOOL_PROFILES[agent];
-  return path.join(homeRoot, profile.promptDir);
+  if (agent === "copilot") {
+    // Copilot reads custom prompts from two places: the VS Code user prompts
+    // directory, and the Copilot CLI's own `~/.copilot/prompts` folder. Install
+    // to both so it works whether you use the VS Code extension or the CLI.
+    const dirs = [path.join(homeRoot, profile.promptDir)];
+    const vscode = copilotUserPromptDir();
+    if (vscode && vscode !== dirs[0]) {
+      dirs.push(vscode);
+    }
+    return dirs;
+  }
+  return [path.join(homeRoot, profile.promptDir)];
 }
 
 function ensureDir(dirPath, dryRun) {
@@ -504,19 +512,25 @@ function isSubpathOf(child, parent) {
 
 /**
  * Group the files just written into distinct install roots. Most agents write
- * everything under one root; Copilot global scope writes prompts to the VS Code
- * user prompt directory, which sits outside the `~/.copilot` agents root, so it
- * gets a separate cleanup pass and manifest.
+ * everything under one root; Copilot global scope writes prompts to both
+ * `~/.copilot/prompts` and the VS Code user prompt directory, so each location
+ * outside the agents root gets a separate cleanup pass and manifest.
  */
-function collectInstallRoots(rootPath, promptsDest, installedFiles) {
-  const separatePromptsRoot = promptsDest && !isSubpathOf(promptsDest, rootPath);
+function collectInstallRoots(rootPath, promptDests, installedFiles) {
   const roots = new Map([[rootPath, []]]);
-  if (separatePromptsRoot) {
-    roots.set(promptsDest, []);
+  const externalDirs = (promptDests || []).filter((d) => d && !isSubpathOf(d, rootPath));
+  for (const d of externalDirs) {
+    roots.set(d, []);
   }
 
   for (const abs of installedFiles || []) {
-    const root = separatePromptsRoot && isSubpathOf(abs, promptsDest) ? promptsDest : rootPath;
+    let root = rootPath;
+    for (const d of externalDirs) {
+      if (isSubpathOf(abs, d)) {
+        root = d;
+        break;
+      }
+    }
     const rel = path.relative(root, abs);
     if (rel === "" || rel.startsWith("..") || path.isAbsolute(rel)) {
       continue;
@@ -527,7 +541,7 @@ function collectInstallRoots(rootPath, promptsDest, installedFiles) {
   return [...roots.entries()].map(([root, relPaths]) => ({ root, relPaths: relPaths.sort() }));
 }
 
-async function installToRoot(rootPath, promptsDest, sourceRoot, contentRoot, agent, options) {
+async function installToRoot(rootPath, promptDests, sourceRoot, contentRoot, agent, options) {
   const profile = TOOL_PROFILES[agent];
   const promptsSrc = path.join(sourceRoot, "prompts");
   const agentsSrc = path.join(sourceRoot, "agents");
@@ -540,8 +554,10 @@ async function installToRoot(rootPath, promptsDest, sourceRoot, contentRoot, age
     skipped: 0,
   };
 
-  if (promptsDest) {
-    mergeSummary(summary, renderEntitiesFromContent(promptsSrc, promptsDest, contentRoot, "prompts", profile.promptExt, options));
+  for (const promptsDest of promptDests || []) {
+    if (promptsDest) {
+      mergeSummary(summary, renderEntitiesFromContent(promptsSrc, promptsDest, contentRoot, "prompts", profile.promptExt, options));
+    }
   }
   mergeSummary(summary, renderEntitiesFromContent(agentsSrc, agentsDest, contentRoot, "agents", profile.agentExt, options));
 
@@ -550,7 +566,7 @@ async function installToRoot(rootPath, promptsDest, sourceRoot, contentRoot, age
 
   // Upgrade cleanup + manifest, one pass per distinct install root.
   const cleanups = [];
-  for (const { root, relPaths } of collectInstallRoots(rootPath, promptsDest, options.installedFiles)) {
+  for (const { root, relPaths } of collectInstallRoots(rootPath, promptDests, options.installedFiles)) {
     const result = await runUpgradeCleanup(root, relPaths, { dryRun: options.dryRun });
     cleanups.push({ root, result });
     writeManifest(root, relPaths, { dryRun: options.dryRun });
@@ -558,7 +574,7 @@ async function installToRoot(rootPath, promptsDest, sourceRoot, contentRoot, age
 
   return {
     rootPath,
-    promptsDest,
+    promptDests: promptDests || [],
     agent,
     cleanups,
     ...summary,
@@ -961,12 +977,12 @@ export async function runCli(argv) {
 
     if (scope === "project") {
       const projectRoot = getProjectRoot(agent, args.workspace);
-      const promptsDest = path.join(projectRoot, TOOL_PROFILES[agent].promptDir);
-      installReports.push(await installToRoot(projectRoot, promptsDest, sourceRoot, contentRoot, agent, options));
+      const promptDests = [path.join(projectRoot, TOOL_PROFILES[agent].promptDir)];
+      installReports.push(await installToRoot(projectRoot, promptDests, sourceRoot, contentRoot, agent, options));
     } else {
       const homeRoot = getHomeRoot(agent);
-      const promptsDest = resolveGlobalPromptDir(agent, homeRoot);
-      installReports.push(await installToRoot(homeRoot, promptsDest, sourceRoot, contentRoot, agent, options));
+      const promptDests = resolveGlobalPromptDirs(agent, homeRoot);
+      installReports.push(await installToRoot(homeRoot, promptDests, sourceRoot, contentRoot, agent, options));
     }
   }
 
@@ -975,8 +991,11 @@ export async function runCli(argv) {
   const agentDirs = new Set();
   for (const report of installReports) {
     console.log(`[easyspec-init] ${args.dryRun ? "would update" : "updated"}: ${report.rootPath}`);
-    if (report.promptsDest && report.promptsDest !== path.join(report.rootPath, TOOL_PROFILES[report.agent].promptDir)) {
-      console.log(`  prompts -> ${report.promptsDest}`);
+    for (const pd of report.promptDests || []) {
+      const standard = path.join(report.rootPath, TOOL_PROFILES[report.agent].promptDir);
+      if (pd !== standard) {
+        console.log(`  prompts -> ${pd}`);
+      }
     }
     console.log(`  copied=${report.copied} overwritten=${report.overwritten} skipped=${report.skipped}`);
     for (const { root, result } of report.cleanups || []) {

@@ -35,6 +35,15 @@ npm install -g @myaider/easyspec
 npx @myaider/easyspec init
 ```
 
+**From a cloned/downloaded repo:**
+
+```bash
+npm install
+npm run init -- --scope project --agent copilot
+```
+
+`npm run init -- <flags>` forwards the flags to `easyspec init`. The per-harness shortcuts (`npm run init:project`, `npm run init:global`, `npm run init:opencode`) are also available.
+
 ## Usage
 
 ### Init
@@ -79,7 +88,7 @@ Models default to **`auto`** — no need to pick one.
 
 | Agent | Commands/Prompts | Agents | Skills |
 |-------|------------------|--------|--------|
-| `copilot` | `~/Library/Application Support/Code/User/prompts/` (macOS) or `%APPDATA%\Code\User\prompts\` (Windows) | `~/.copilot/agents/` | `~/.copilot/skills/` |
+| `copilot` | `~/.copilot/prompts/` **and** `~/Library/Application Support/Code/User/prompts/` (macOS) or `%APPDATA%\Code\User\prompts\` (Windows) | `~/.copilot/agents/` | `~/.copilot/skills/` |
 | `opencode` | `~/.config/opencode/commands/` | `~/.config/opencode/agents/` | `~/.config/opencode/skills/` |
 | `claude-code` | `~/.claude/commands/` | `~/.claude/agents/` | `~/.claude/skills/` |
 

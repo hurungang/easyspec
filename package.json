@@ -15,6 +15,7 @@
   ],
   "scripts": {
     "start": "node bin/easyspec-init.js",
+    "init": "node bin/easyspec-init.js init",
     "test": "node --test \"tests/*.test.js\"",
     "init:project": "node bin/easyspec-init.js init --scope project --agent copilot",
     "init:global": "node bin/easyspec-init.js init --scope global --agent copilot",

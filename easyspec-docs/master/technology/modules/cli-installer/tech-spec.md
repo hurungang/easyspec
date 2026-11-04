@@ -10,12 +10,12 @@ Post-rework responsibilities added on top of the preserved pipeline: config scaf
 ## Technical Design
 
 - **Command dispatch** — `runCli` orchestrates argument parsing, harness/scope selection, install, and sync.
-- **Target-tool profiles** — `TOOL_PROFILES` maps each supported harness to its install paths and file extensions; global copilot prompts use a platform-specific directory (`copilotUserPromptDir`).
+- **Target-tool profiles** — `TOOL_PROFILES` maps each supported harness to its install paths and file extensions; global copilot prompts are installed to both `~/.copilot/prompts/` (Copilot CLI) and the platform-specific VS Code user prompts directory (`copilotUserPromptDir`).
 - **Rendering pipeline** — body files (`templates/content/`) provide frontmatter and body; generic per-tool shells provide the wrapper; `renderEntitiesFromContent` and `renderTemplate` perform substitution; `copySkillDirectory` renders skill trees. Rendering is also the tagging point: ownership tags are appended before write so they survive into every target format.
 - **Copy policy** — `renderEntitiesFromContent` and `copySkillDirectory` always write the latest rendered content (overwriting existing easyspec files), so updates propagate content changes and restore accidentally removed files. `copyFileWithPolicy` (used by `sync`) is `--force` aware.
 - **Model selection** — `applyModelSelectionsToRoot` / `upsertModelInFrontmatter` apply technical/non-technical model presets to installed agents.
 - **Docs-folder confirmation** — `confirmDocsFolder` runs a yes/no confirm on the default (`easyspec-docs`) with optional text override; non-TTY and `--dry-run` skip straight to the default.
-- **Upgrade path** — on `init` over an existing install, the installer presents retired tagged artifacts for confirmed deletion (prior manifest entries or known retired names such as `es-change-init` and `es-change-review`) via `src/upgrade.mjs`. Cleanup and manifest recording run per distinct install root, so Copilot's global prompts directory (which sits outside `~/.copilot`) is cleaned up and recorded independently.
+- **Upgrade path** — on `init` over an existing install, the installer presents retired tagged artifacts for confirmed deletion (prior manifest entries or known retired names such as `es-change-init` and `es-change-review`) via `src/upgrade.mjs`. Cleanup and manifest recording run per distinct install root, so the VS Code Copilot prompts directory (which sits outside `~/.copilot`) is cleaned up and recorded independently from the `~/.copilot` root.
 
 ## Code Reference Map
 
@@ -26,7 +26,7 @@ Post-rework responsibilities added on top of the preserved pipeline: config scaf
 | `TOOL_PROFILES` | constant | Per-target-tool install paths and extensions (copilot, opencode, claude-code) | `src/cli.mjs` |
 | `getProjectRoot` | function | Resolves per-tool project install directory | `src/cli.mjs` |
 | `getHomeRoot` | function | Resolves per-tool home (global) install directory | `src/cli.mjs` |
-| `resolveGlobalPromptDir` | function | Global prompt directory per tool (incl. platform-specific copilot path) | `src/cli.mjs` |
+| `resolveGlobalPromptDirs` | function | Global prompt destination list per tool (copilot returns both `~/.copilot/prompts` and the platform-specific VS Code path) | `src/cli.mjs` |
 | `installToRoot` | function | Installs prompts, agents, and skills into one target root, then runs upgrade cleanup and records a manifest per distinct install root | `src/cli.mjs` |
 | `collectInstallRoots` | function | Groups written files into distinct install roots (handles Copilot's external global prompts dir) | `src/cli.mjs` |
 | `renderEntitiesFromContent` | function | Renders prompts/agents from generic template + body content; tagging write site | `src/cli.mjs` |
