@@ -16,6 +16,8 @@ Before starting any task, read `easyspec-config.yaml` (project root) to understa
 
 Use the source paths from `easyspec-config.yaml` everywhere file paths are referenced in this skill.
 
+If `easyspec-config.yaml` is missing and there is no legacy config to migrate, create it before doing anything else: confirm the docs folder (default `easyspec-docs`), then write the root config skeleton defined in the `/es-init` prompt (Step 1b). Do not proceed with any lifecycle task until the root config exists and is populated.
+
 ### Legacy `docs/config.yaml` (older easyspec versions)
 
 If `easyspec-config.yaml` does not exist at the project root **but** `docs/config.yaml` does, the project is on the legacy hardcoded layout. Do **not** create a new config or silently fall back to `easyspec-docs` — that would strand the user's existing master and change docs.

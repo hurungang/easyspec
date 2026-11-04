@@ -11,12 +11,14 @@ Initialize easyspec for this project: create or confirm `easyspec-config.yaml` a
 
 ---
 
-## Step 1: Create or Confirm the Root Config
+## Step 1: Create or Confirm the Root Config (do this first)
+
+This step is mandatory. Do **not** start master doc generation until `easyspec-config.yaml` exists at the project root and is populated.
 
 Check the config state in this order:
 
 1. **Legacy config only** — if `easyspec-config.yaml` is missing but `docs/config.yaml` exists, follow the migration flow in the es-change-lifecycle skill (Step 0 → *Legacy `docs/config.yaml`*). Ask for confirmation, move the config to the project root with `docs_folder: docs`, keep all existing `docs/` content in place, then continue from Step 2.
-2. **No config at all** — create it (Step 1a), including confirming the docs folder.
+2. **No config at all** — create it now (Step 1a), including confirming the docs folder.
 3. **Config exists but has placeholder values** (any field contains `<` and `>`, or values starting with `TODO:`): announce "Config found but not yet initialized — completing setup." and continue from Step 1a.
 4. **Config exists and appears populated**: confirm the docs folder with the user, then jump to Step 2 (Master Doc Generation).
 
@@ -24,13 +26,50 @@ Check the config state in this order:
 
 Offer the user the docs folder choice and require explicit confirmation. The default is `easyspec-docs`. Explain the choice matters: easyspec will only ever write its master docs and change docs inside this folder, so a folder already used by another documentation tool stays untouched.
 
-### Step 1b: Populate project context
+### Step 1b: Write the root config
 
-Scan the project structure and ask targeted questions to fill in the config's project context: project name and description, source code locations (frontend, backend, schema files, test directories), technology stack, project conventions, and domain knowledge. Detect what you can from files such as `package.json`, `pyproject.toml`, dependency manifests, and directory layout; ask the user to confirm detected values and fill gaps in a single batched question.
+Scan the project structure and detect what you can: project name and description, source code locations (frontend, backend, schema files, test directories), technology stack, project conventions, and domain knowledge. Sources include `package.json`, `pyproject.toml`, dependency manifests, and directory layout. Ask the user to confirm detected values and fill gaps in a single batched question.
 
-Write `easyspec-config.yaml` at the project root with the confirmed docs folder and project context. If any field could not be detected or confirmed, leave it as a descriptive placeholder starting with `TODO:` rather than guessing.
+Then **write** `easyspec-config.yaml` at the project root using this exact structure. Replace the placeholders with confirmed values; keep `null`/`[]` or a `TODO:` value when something is unknown — never omit the file.
 
-Embed the easyspec ownership tag (`easyspec:managed v1`) in the config file as a YAML comment.
+```yaml
+# easyspec:managed v1
+# Easyspec configuration — resolved by every es- agent, prompt, and skill.
+# Docs folder: all easyspec content lives under ./<docs-folder>/ (master/, changes/).
+
+docs_folder: <docs-folder>
+
+project:
+  name: <project name>
+  description: <one-sentence description>
+
+# Source code locations — used by agents to resolve code references
+source:
+  frontend: null
+  backend: null
+  schema: null
+  tests: []
+
+# Technology stack — context for agents, not prescriptive
+tech_stack:
+  frontend: null
+  backend: null
+  database: null
+  auth: null
+  infra: null
+
+# Key project conventions — agents follow these when making decisions
+conventions: []
+
+# Domain knowledge — business rules agents must always know
+domain: []
+```
+
+The first line (`# easyspec:managed v1`) is the ownership tag and must always be present.
+
+### Step 1c: Verify the config before continuing
+
+Confirm `easyspec-config.yaml` exists at the project root and `docs_folder` is set. If it is still missing, create it now — do not proceed to Step 2 without it.
 
 ---
 
@@ -91,6 +130,7 @@ Next steps:
 
 ## Guardrails
 
+- **Step 1 is a hard gate** — never generate master docs while `easyspec-config.yaml` is missing at the project root
 - Never overwrite a fully-populated config without user confirmation
 - Never create, move, or delete anything inside a docs folder the user did not confirm
 - Never modify existing documentation from any source — it is read-only input
